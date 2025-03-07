@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Team {
+  id      String  @id @default(uuid())
+  name    String
+  color   String
+  users   User[]
+
+  @@map("teams")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  password  String
+  cohort    String
+  teamId    String?    @map("team_id")
+  avatar    String?
+  role      Role      @default(member)
+  team      Team      @relation(fields: [teamId], references: [id])
+  progress  Progress[]
+  messages  ChatMessage[]
+  chatLogs  ChatLog[]
+
+  @@map("users")
+}
+
+model Progress {
+  id        Int      @id @default(autoincrement())  // @autoIncrement() -> @default(autoincrement())
+  userId    String   @map("user_id")
+  date      DateTime  // @db.Date 제거
+  completed Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@map("progress")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  message   String
+  timestamp DateTime
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("chat_messages")
+}
+
+model ChatLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  message   String
+  timestamp DateTime
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("chat_logs")
+}
+
+enum Role {
+  admin
+  leader
+  member
+}
