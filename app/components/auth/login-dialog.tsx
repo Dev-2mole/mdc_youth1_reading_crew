@@ -165,42 +165,72 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
 
           {/* 로그인 폼 */}
           <TabsContent value="login">
-            <Label>아이디</Label>
-            <Input value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="아이디" />
-            <Label>비밀번호</Label>
-            <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="비밀번호" />
+          <div className="space-y-2">
+            <div>
+              <Label>아이디</Label>
+              <Input value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="아이디" />
+            </div>
+            <div>
+              <Label>비밀번호</Label>
+              <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="비밀번호" />
+            </div>
             {loginError && <p className="text-sm text-red-500">{loginError}</p>}
-            <Button onClick={handleLogin}>로그인</Button>
-          </TabsContent>
+            <Button className="mt-4 w-full" onClick={handleLogin}>로그인</Button>
+          </div>
+        </TabsContent>
 
-          {/* 회원가입 폼 */}
-          <TabsContent value="register">
-            <Label>아이디</Label>
-            <Input value={registerId} onChange={(e) => setRegisterId(e.target.value)} placeholder="아이디" />
-            <Label>비밀번호</Label>
-            <Input type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="비밀번호" />
-            <Label>이름</Label>
-            <Input value={registerName} onChange={(e) => setRegisterName(e.target.value)} placeholder="이름" />
-            <Label>기수</Label>
-            <Input value={registerCohort} onChange={(e) => setRegisterCohort(e.target.value)} placeholder="기수" />
-            <Label>팀</Label>
-            <Select value={registerTeam} onValueChange={setRegisterTeam}>
-              <SelectTrigger>
-                <SelectValue placeholder="팀 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {teams.map((team) => (
-                  <SelectItem key={team.id} value={team.id}>
-                    {team.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* 회원가입 폼 */}
+        <TabsContent value="register">
+          <div className="space-y-2">
+            <div>
+              <Label>아이디</Label>
+              <Input value={registerId} onChange={(e) => setRegisterId(e.target.value)} placeholder="아이디" />
+            </div>
+            <div>
+              <Label>비밀번호</Label>
+              <Input type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="비밀번호" />
+            </div>
+            <div>
+              <Label>이름</Label>
+              <Input value={registerName} onChange={(e) => setRegisterName(e.target.value)} placeholder="이름" />
+            </div>
+            <div>
+              <Label htmlFor="register-cohort">기수</Label>
+              <Select value={registerCohort} onValueChange={setRegisterCohort}>
+                <SelectTrigger id="register-cohort">
+                  <SelectValue placeholder="기수를 선택하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 8 }, (_, i) => i + 41).map((cohort) => (
+                    <SelectItem key={cohort} value={cohort.toString()}>
+                      {cohort}기
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>팀</Label>
+              <Select value={registerTeam} onValueChange={setRegisterTeam}>
+                <SelectTrigger>
+                  <SelectValue placeholder="팀 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {registerError && <p className="text-sm text-red-500">{registerError}</p>}
-            <Button onClick={handleRegister}>회원가입</Button>
-          </TabsContent>
+            <Button className="mt-4 w-full" onClick={handleRegister}>회원가입</Button>
+          </div>
+        </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
   )
 }
+

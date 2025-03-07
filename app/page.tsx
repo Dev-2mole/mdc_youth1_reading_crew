@@ -22,7 +22,7 @@ import { UserData, Team, ChatMessage, TeamMember } from "./types"
 
 // 날짜 생성 함수
 const generateWeekdayDates = () => {
-  const startDate = new Date(2025, 2, 3) // March 3, 2025
+  const startDate = new Date(2025, 2, 10) // March 10, 2025
   const endDate = new Date(2025, 4, 9) // May 9, 2025
   const dates: Date[] = []
 
@@ -392,9 +392,9 @@ export default function TeamProgressPage() {
   const sendingRef = useRef(false)
 
   const sendMessage = async () => {
-    if (newMessage.trim() === "" || !currentUser || sendingRef.current) return
-    sendingRef.current = true
-
+    if (newMessage.trim() === "" || !currentUser || sendingRef.current) return;
+    sendingRef.current = true; // 중복 방지
+  
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -405,15 +405,15 @@ export default function TeamProgressPage() {
           userId: currentUser.id,
           message: newMessage,
         }),
-      })
-
+      });
+  
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "메시지 전송 실패")
+        const error = await response.json();
+        throw new Error(error.error || "메시지 전송 실패");
       }
-
-      const messageData = await response.json()
-
+  
+      const messageData = await response.json();
+  
       const newChatMessage = {
         id: messageData.id,
         userId: messageData.userId,
@@ -421,29 +421,42 @@ export default function TeamProgressPage() {
         userAvatar: currentUser.avatar,
         message: newMessage,
         timestamp: new Date(messageData.timestamp),
-      }
-
-      setChatMessages((prev) => [...prev, newChatMessage])
-      setNewMessage("")
+      };
+  
+      // 상태 업데이트 후 자동 스크롤
+      setChatMessages((prev) => [...prev, newChatMessage]);
+  
+      setNewMessage(""); // 입력 필드 초기화
     } catch (error) {
-      console.error("메시지 전송 실패:", error)
-      alert("메시지 전송에 실패했습니다.")
+      console.error("메시지 전송 실패:", error);
+      alert("메시지 전송에 실패했습니다.");
     } finally {
-      setTimeout(() => {
-        sendingRef.current = false
-      }, 500)
+      sendingRef.current = false; // 즉시 초기화
     }
-  }
+  };
 
   // 채팅 스크롤 처리
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]")
+      const scrollContainer = scrollAreaRef.current.querySelector("[data-radix-scroll-area-viewport]");
       if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
     }
-  }, [chatMessages])
+  }, [chatMessages]);
+
+  // 사용자 계정 정보 변경 감지 후 채팅 메시지 업데이트
+useEffect(() => {
+  if (!loggedInUser) return;
+
+  setChatMessages((prevMessages) =>
+    prevMessages.map((msg) =>
+      msg.userId === loggedInUser.id
+        ? { ...msg, userName: loggedInUser.name, userAvatar: loggedInUser.avatar }
+        : msg
+    )
+  );
+}, [loggedInUser]);
 
   // 자정 초기화 처리
   // 채팅 메시지 최신 상태를 유지하는 ref
@@ -1064,4 +1077,5 @@ useEffect(() => {
     </div>
   )
 }
+
 

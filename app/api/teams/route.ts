@@ -9,28 +9,35 @@ export async function GET() {
   try {
     const teams = await prisma.team.findMany({
       include: { users: true },
-    })
-    return NextResponse.json(teams)
+    });
+    // users를 members로 매핑
+    const formattedTeams = teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      color: team.color,
+      members: team.users || [],
+    }));
+    return NextResponse.json(formattedTeams);
   } catch (error) {
-    return NextResponse.json({ error: "팀을 불러오는데 실패했습니다." }, { status: 500 })
+    return NextResponse.json({ error: "팀을 불러오는데 실패했습니다." }, { status: 500 });
   }
 }
+
 
 // 팀 추가 (POST)
 export async function POST(req: Request) {
   try {
     const { name, color } = await req.json()
     const newTeam = await prisma.team.create({
-      data: {
-        name,
-        color,
-      },
+      data: { name, color },
     })
-    return NextResponse.json(newTeam)
+    // 새 팀 객체에 빈 사용자 배열 추가
+    return NextResponse.json({ ...newTeam, users: [] })
   } catch (error) {
     return NextResponse.json({ error: "팀 추가 실패" }, { status: 500 })
   }
 }
+
 
 // 팀 수정 (PUT)
 export async function PUT(req: Request) {
@@ -56,4 +63,5 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "팀 삭제 실패" }, { status: 500 })
   }
 }
+
 

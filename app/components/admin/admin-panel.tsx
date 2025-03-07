@@ -164,60 +164,85 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
     onUpdateTeams(updatedTeams)
   }
 
-  // Function to add a new team
-  const handleAddTeam = () => {
+  // 팀 추가
+  const handleAddTeam = async () => {
     if (!newTeamName.trim()) {
       alert("팀 이름을 입력해주세요.")
       return
     }
-
-    const newTeam: Team = {
-      id: `team-${Date.now()}`,
-      name: newTeamName,
-      color: newTeamColor,
-      members: [],
+  
+    try {
+      const response = await fetch("/api/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newTeamName, color: newTeamColor }),
+      })
+  
+      if (!response.ok) throw new Error("팀 추가 실패")
+  
+      const newTeam = await response.json()
+      onUpdateTeams([...teams, { ...newTeam, members: newTeam.users || [] }])
+      setNewTeamName("")
+      setNewTeamColor("#FF4444")
+      setIsAddTeamOpen(false)
+    } catch (error) {
+      console.error(error)
+      alert("팀 추가 중 오류 발생")
     }
-
-    onUpdateTeams([...teams, newTeam])
-    setNewTeamName("")
-    setNewTeamColor("#FF4444")
-    setIsAddTeamOpen(false)
   }
+  
 
-  // Function to update a team
-  const handleUpdateTeam = () => {
-    if (!editingTeam) return
-    if (!newTeamName.trim()) {
+  // 팀 수정
+  const handleUpdateTeam = async () => {
+    if (!editingTeam || !newTeamName.trim()) {
       alert("팀 이름을 입력해주세요.")
       return
     }
-
-    const updatedTeams = teams.map((team) => {
-      if (team.id === editingTeam.id) {
-        return {
-          ...team,
-          name: newTeamName,
-          color: newTeamColor,
-        }
-      }
-      return team
-    })
-
-    onUpdateTeams(updatedTeams)
-    setIsEditTeamOpen(false)
-  }
+  
+    try {
+      const response = await fetch("/api/teams", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editingTeam.id, name: newTeamName, color: newTeamColor }),
+      })
+  
+      if (!response.ok) throw new Error("팀 수정 실패")
+  
+      const updatedTeam = await response.json()
+      const updatedTeams = teams.map((team) =>
+        team.id === updatedTeam.id ? updatedTeam : team
+      )
+      onUpdateTeams(updatedTeams)
+      setIsEditTeamOpen(false)
+    } catch (error) {
+      console.error(error)
+      alert("팀 수정 중 오류 발생")
+    }
+  }  
 
   // Function to delete a team
-  const handleDeleteTeam = (teamId: string) => {
-    // Close the dialog first to show the change immediately
+  const handleDeleteTeam = async (teamId: string) => {
     setIsOpen(false)
-
-    // Small delay to allow the dialog to close
-    setTimeout(() => {
-      const updatedTeams = teams.filter((team) => team.id !== teamId)
-      onUpdateTeams(updatedTeams)
-    }, 100)
+  
+    try {
+      const response = await fetch("/api/teams", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: teamId }),
+      })
+  
+      if (!response.ok) throw new Error("팀 삭제 실패")
+  
+      setTimeout(() => {
+        const updatedTeams = teams.filter((team) => team.id !== teamId)
+        onUpdateTeams(updatedTeams)
+      }, 100)
+    } catch (error) {
+      console.error(error)
+      alert("팀 삭제 중 오류 발생")
+    }
   }
+  
 
   // Function to open edit team dialog
   const openEditTeamDialog = (team: Team) => {
@@ -698,4 +723,5 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
     </Dialog>
   )
 }
+
 

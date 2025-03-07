@@ -1,11 +1,17 @@
-import { NextResponse } from "next/server";
+// app/api/upload-avatar/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import { IncomingForm, File as FormidableFile, Fields, Files } from "formidable";
 import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
 import { promisify } from "util";
 
-const uploadDir = path.join(process.cwd(), "public", "uploads");
+// Next.js 14의 새로운 설정 방식 사용
+export const dynamic = 'force-dynamic'; // 모든 요청을 동적으로 처리
+export const runtime = 'nodejs'; // Node.js 런타임 사용
+
+// 업로드 디렉토리를 프로젝트 루트의 uploads 폴더로 변경
+const uploadDir = path.join(process.cwd(), "uploads");
 
 // 업로드 디렉토리가 존재하지 않으면 생성
 if (!fs.existsSync(uploadDir)) {
@@ -15,19 +21,14 @@ if (!fs.existsSync(uploadDir)) {
 // `fs.rename`을 Promise 기반으로 변환
 const renameFile = promisify(fs.rename);
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     // 요청 body를 arrayBuffer로 읽어오기
     const buf = await req.arrayBuffer();
     const buffer = Buffer.from(buf);
 
-    // Readable 스트림 생성 (formidable이 Node.js 스트림을 필요로 함)
-    const nodeReq = new Readable({
-      read() {
-        this.push(buffer);
-        this.push(null);
-      },
-    }) as any;
+    // Readable.from을 사용하여 스트림 생성
+    const nodeReq = Readable.from(buffer) as any;
     nodeReq.headers = Object.fromEntries(req.headers.entries());
     nodeReq.method = req.method;
 
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
       });
 
     // form 데이터 파싱
-    const { fields = {}, files = {} } = await parseForm(); // 기본값 `{}` 설정
+    const { fields = {}, files = {} } = await parseForm();
 
     // userId 처리
     const rawUserId = fields.userId;
@@ -56,11 +57,11 @@ export async function POST(req: Request) {
     // userId가 string[]인지, string인지, undefined인지 안전하게 처리
     let userId: string;
     if (Array.isArray(rawUserId)) {
-    userId = rawUserId[0] ?? "unknown"; // 배열일 경우 첫 번째 요소를 사용
+      userId = rawUserId[0] ?? "unknown";
     } else if (typeof rawUserId === "string") {
-    userId = rawUserId; // string이면 그대로 사용
+      userId = rawUserId;
     } else {
-    userId = "unknown"; // undefined일 경우 기본값 사용
+      userId = "unknown";
     }
 
     // 파일 처리
@@ -79,8 +80,8 @@ export async function POST(req: Request) {
 
     await renameFile(file.filepath, newPath);
 
-    // 업로드된 파일의 정적 접근 경로 반환
-    return NextResponse.json({ path: `/uploads/${newFilename}` });
+    // API 라우트를 통해 파일에 접근할 수 있는 URL 경로 반환
+    return NextResponse.json({ path: `/api/files/${newFilename}` });
   } catch (error) {
     console.error("파일 업로드 실패:", error);
     return NextResponse.json({ error: "업로드 실패" }, { status: 500 });
