@@ -89,6 +89,8 @@ export default function TeamProgressPage() {
         // 팀 데이터 가져오기
         const teamsResponse = await fetch("/api/teams")
         const teamsData = await teamsResponse.json()
+        // "Dev Team" 필터링: 페이지에 표시하거나 비교에 사용하지 않음
+        const filteredTeamsData = teamsData.filter((team: any) => team.name !== "Dev Team")
 
         // 사용자 데이터 가져오기
         const usersResponse = await fetch("/api/users")
@@ -103,7 +105,7 @@ export default function TeamProgressPage() {
         const logsData = await logsResponse.json()
 
         // 팀 데이터 구성
-        const formattedTeams = teamsData.map((team: any) => {
+        const formattedTeams = filteredTeamsData.map((team: any) => {
           const teamUsers = usersData.filter((user: any) => user.teamId === team.id)
 
           // 각 사용자의 진행 상황 계산
@@ -127,6 +129,10 @@ export default function TeamProgressPage() {
           }
         })
 
+        setTeamsState(formattedTeams)
+        if (formattedTeams.length > 0) {
+          setActiveTeam(formattedTeams[0].id)
+        }
         // 채팅 메시지 포맷
         const formattedChatMessages = chatData.map((msg: any) => ({
           id: msg.id,
@@ -147,10 +153,6 @@ export default function TeamProgressPage() {
           timestamp: new Date(log.timestamp),
         }))
 
-        setTeamsState(formattedTeams)
-        if (formattedTeams.length > 0) {
-          setActiveTeam(formattedTeams[0].id)
-        }
         setChatMessages(formattedChatMessages)
         setChatLogs(formattedChatLogs)
 
@@ -252,12 +254,10 @@ export default function TeamProgressPage() {
       )
 
     if (!(isAdmin || isTeamLeader) && isPastDate) {
-      // alert("관리자만 과거 날짜를 체크할 수 있습니다.")
       return
     }
 
     if (!isAdmin && isFutureDate) {
-      // alert("관리자만 미래 날짜를 체크할 수 있습니다.")
       return
     }
 
@@ -313,23 +313,17 @@ export default function TeamProgressPage() {
   }
 
   // 로그인 처리
-  // 수정된 handleLogin 코드
-const handleLogin = (user: UserData) => {
-  // 이미 로그인 API를 통해 받은 user 정보를 그대로 사용합니다.
-  setLoggedInUser(user)
-
-  // 현재 사용자를 팀에서 찾기
-  const team = teamsState.find((t) => t.id === user.teamId)
-  if (team) {
-    const member = team.members.find((m) => m.id === user.id)
-    if (member) {
-      setCurrentUser(member)
+  const handleLogin = (user: UserData) => {
+    setLoggedInUser(user)
+    const team = teamsState.find((t) => t.id === user.teamId)
+    if (team) {
+      const member = team.members.find((m) => m.id === user.id)
+      if (member) {
+        setCurrentUser(member)
+      }
     }
+    setActiveTeam(user.teamId)
   }
-
-  setActiveTeam(user.teamId)
-}
-
 
   // 로그아웃 처리
   const handleLogout = () => {
@@ -364,7 +358,9 @@ const handleLogin = (user: UserData) => {
       if (loggedInUser && updatedUser.teamId !== loggedInUser.teamId) {
         const teamsResponse = await fetch("/api/teams")
         const teamsData = await teamsResponse.json()
-        setTeamsState(teamsData)
+        // "Dev Team" 필터링
+        const filteredTeams = teamsData.filter((team: any) => team.name !== "Dev Team")
+        setTeamsState(filteredTeams)
         setActiveTeam(updatedUser.teamId)
       } else {
         setTeamsState((prevTeams) => {
@@ -393,11 +389,11 @@ const handleLogin = (user: UserData) => {
   }
 
   // 메시지 전송 처리
-  const sendingRef = useRef(false);
+  const sendingRef = useRef(false)
 
-const sendMessage = async () => {
-    if (newMessage.trim() === "" || !currentUser || sendingRef.current) return;
-    sendingRef.current = true; // 중복 실행 방지
+  const sendMessage = async () => {
+    if (newMessage.trim() === "" || !currentUser || sendingRef.current) return
+    sendingRef.current = true
 
     try {
       const response = await fetch("/api/chat", {
@@ -409,14 +405,14 @@ const sendMessage = async () => {
           userId: currentUser.id,
           message: newMessage,
         }),
-      });
+      })
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "메시지 전송 실패");
+        const error = await response.json()
+        throw new Error(error.error || "메시지 전송 실패")
       }
 
-      const messageData = await response.json();
+      const messageData = await response.json()
 
       const newChatMessage = {
         id: messageData.id,
@@ -425,19 +421,19 @@ const sendMessage = async () => {
         userAvatar: currentUser.avatar,
         message: newMessage,
         timestamp: new Date(messageData.timestamp),
-      };
+      }
 
-      setChatMessages((prev) => [...prev, newChatMessage]);
-      setNewMessage("");
+      setChatMessages((prev) => [...prev, newChatMessage])
+      setNewMessage("")
     } catch (error) {
-      console.error("메시지 전송 실패:", error);
-      alert("메시지 전송에 실패했습니다.");
+      console.error("메시지 전송 실패:", error)
+      alert("메시지 전송에 실패했습니다.")
     } finally {
       setTimeout(() => {
-        sendingRef.current = false; // 일정 시간 후 초기화하여 연속 입력 방지
-      }, 500);
+        sendingRef.current = false
+      }, 500)
     }
-};
+  }
 
   // 채팅 스크롤 처리
   useEffect(() => {
@@ -450,45 +446,56 @@ const sendMessage = async () => {
   }, [chatMessages])
 
   // 자정 초기화 처리
-  useEffect(() => {
-    const scheduleMidnightReset = async () => {
-      const now = new Date();
-      const midnight = new Date();
-      midnight.setHours(0, 0, 0, 0);
-      
-      const timeUntilMidnight = midnight.getTime() + 86400000 - now.getTime(); // 다음 자정까지 남은 시간(ms)
-  
-      setTimeout(async () => {
-        try {
-          for (const message of chatMessages) {
-            await fetch("/api/chat/logs", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                userId: message.userId,
-                message: message.message,
-                timestamp: message.timestamp,
-              }),
-            });
-          }
-  
-          setChatLogs((prevLogs) => [...prevLogs, ...chatMessages]);
-          setChatMessages([]);
-          setLastResetDate(new Date().toDateString()); // 날짜 업데이트
-        } catch (error) {
-          console.error("채팅 로그 저장 실패:", error);
-        } finally {
-          scheduleMidnightReset(); // 다음 자정 리셋 예약
+  // 채팅 메시지 최신 상태를 유지하는 ref
+const chatMessagesRef = useRef(chatMessages);
+useEffect(() => {
+  chatMessagesRef.current = chatMessages;
+}, [chatMessages]);
+
+useEffect(() => {
+  const scheduleMidnightReset = () => {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    // 내일 자정까지의 ms 계산
+    const nextMidnight = midnight.getTime() + 86400000;
+    const timeUntilMidnight = nextMidnight - now.getTime();
+
+    const timerId = setTimeout(async () => {
+      try {
+        const messagesToLog = chatMessagesRef.current;
+        // 채팅 로그 API에 메시지 저장
+        for (const message of messagesToLog) {
+          await fetch("/api/chat/logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: message.userId,
+              message: message.message,
+              timestamp: message.timestamp,
+            }),
+          });
         }
-      }, timeUntilMidnight);
-    };
-  
-    scheduleMidnightReset();
-  }, [chatMessages]);
-  
-  
+        // 채팅 로그와 화면 초기화
+        setChatLogs((prevLogs) => [...prevLogs, ...messagesToLog]);
+        setChatMessages([]);
+        setLastResetDate(new Date().toDateString());
+      } catch (error) {
+        console.error("채팅 로그 저장 실패:", error);
+      } finally {
+        // 다음 자정 타이머 예약
+        scheduleMidnightReset();
+      }
+    }, timeUntilMidnight);
+
+    return timerId;
+  };
+
+  const timerId = scheduleMidnightReset();
+  return () => clearTimeout(timerId);
+}, []);
+
+
   const currentTeam =
     teamsState.find((team) => team.id === activeTeam) || (teamsState.length > 0 ? teamsState[0] : null)
 
@@ -1057,3 +1064,4 @@ const sendMessage = async () => {
     </div>
   )
 }
+
