@@ -13,8 +13,25 @@ const uploadDir = path.join(process.cwd(), "uploads");
 // 최대 파일 크기 설정 (20MB)
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
+// 중요: Next.js App Router에서는 이렇게 요청 크기를 제한하는 설정을 추가
+export const config = {
+  api: {
+    bodyParser: false, // 우리가 직접 formData를 파싱할 것임
+    responseLimit: false, // 응답 크기 제한 해제
+  },
+};
+
 export async function POST(req: NextRequest) {
   try {
+    // Content-Length 확인
+    const contentLength = parseInt(req.headers.get('content-length') || '0', 10);
+    if (contentLength > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "파일 크기가 너무 큽니다. 최대 20MB까지 가능합니다." }, 
+        { status: 413 }
+      );
+    }
+
     // 업로드 디렉토리가 존재하지 않으면 생성
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true });
@@ -36,7 +53,10 @@ export async function POST(req: NextRequest) {
     
     // 파일 크기 제한 검사
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "파일 크기가 너무 큽니다. 최대 10MB까지 가능합니다." }, { status: 400 });
+      return NextResponse.json(
+        { error: "파일 크기가 너무 큽니다. 최대 20MB까지 가능합니다." }, 
+        { status: 413 }
+      );
     }
     
     // 파일 형식 검사 (이미지 파일인지 확인하되, 더 넓은 범위의 형식 허용)

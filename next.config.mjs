@@ -21,18 +21,16 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
-  // 파일 업로드 크기 제한 설정 추가
-  api: {
-    bodyParser: {
-      sizeLimit: '20mb', // 기본값 1mb에서 20mb로 증가
-    },
-    responseLimit: false, // 응답 크기 제한 해제
-  },
-  // 파일 업로드 관련 환경 변수 추가
+  // 웹 서버 설정 - Nginx나 기타 웹 서버에서 설정해야 함
+  // 파일 업로드 관련 환경 변수
   env: {
     MAX_FILE_SIZE: 20 * 1024 * 1024, // 20MB
   }
 }
+
+// Nginx 설정 예시 (주석으로 추가)
+// 서버에 아래 설정을 적용해야 함:
+// client_max_body_size 20M;
 
 mergeConfig(nextConfig, userConfig)
 
