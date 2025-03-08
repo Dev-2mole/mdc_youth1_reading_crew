@@ -1,42 +1,68 @@
 import { NextResponse } from "next/server"
-import prisma from "@/lib/prisma"
-import { hash } from "bcrypt"
+import { PrismaClient } from "@prisma/client"
 
+const prisma = new PrismaClient()
+
+// 사용자 정보 가져오기 (GET)
 export async function GET() {
   try {
     const users = await prisma.user.findMany({
-      include: {
-        team: true,
-      },
+      include: { team: true },
     })
     return NextResponse.json(users)
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
+    console.error("Error fetching users:", error)
+    return NextResponse.json({ error: "사용자 정보를 불러오는데 실패했습니다." }, { status: 500 })
   }
 }
 
-export async function POST(request: Request) {
+// 사용자 정보 업데이트 (PUT)
+export async function PUT(req: Request) {
   try {
-    const body = await request.json()
-    const { name, password, cohort, teamId, avatar, role } = body
-
-    // 비밀번호 해싱
-    const hashedPassword = await hash(password, 10)
-
-    const user = await prisma.user.create({
+    const { id, name, teamId, role, avatar } = await req.json()
+    
+    console.log("Updating user info:", { id, name, teamId, role, avatar })
+    
+    const updatedUser = await prisma.user.update({
+      where: { id },
       data: {
         name,
-        password: hashedPassword,
-        cohort,
         teamId,
+        role,
         avatar,
-        role: role || "member",
       },
+      include: {
+        team: true
+      }
     })
-
-    return NextResponse.json(user)
+    
+    console.log("User updated successfully:", updatedUser)
+    
+    // UserData 인터페이스에 맞게 응답 데이터 구성
+    const responseData = {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      cohort: updatedUser.cohort || "",
+      teamId: updatedUser.teamId || "",
+      avatar: updatedUser.avatar || "",
+      role: updatedUser.role as "admin" | "leader" | "member"
+    }
+    
+    return NextResponse.json(responseData)
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create user" }, { status: 500 })
+    console.error("Error updating user:", error)
+    return NextResponse.json({ error: "사용자 정보 업데이트 실패" }, { status: 500 })
   }
 }
 
+// 사용자 삭제 (DELETE)
+export async function DELETE(req: Request) {
+  try {
+    const { id } = await req.json()
+    await prisma.user.delete({ where: { id } })
+    return NextResponse.json({ message: "사용자 삭제 완료" })
+  } catch (error) {
+    console.error("Error deleting user:", error)
+    return NextResponse.json({ error: "사용자 삭제 실패" }, { status: 500 })
+  }
+}

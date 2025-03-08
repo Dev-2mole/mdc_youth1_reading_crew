@@ -21,6 +21,8 @@ export async function PUT(req: Request) {
   try {
     const { id, name, teamId, role, avatar } = await req.json()
     
+    console.log("Updating user info:", { id, name, teamId, role, avatar })
+    
     const updatedUser = await prisma.user.update({
       where: { id },
       data: {
@@ -29,9 +31,24 @@ export async function PUT(req: Request) {
         role,
         avatar,
       },
+      include: {
+        team: true
+      }
     })
     
-    return NextResponse.json(updatedUser)
+    console.log("User updated successfully:", updatedUser)
+    
+    // UserData 인터페이스에 맞게 응답 데이터 구성
+    const responseData = {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      cohort: updatedUser.cohort || "",
+      teamId: updatedUser.teamId || "",
+      avatar: updatedUser.avatar || "",
+      role: updatedUser.role as "admin" | "leader" | "member"
+    }
+    
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error("Error updating user:", error)
     return NextResponse.json({ error: "사용자 정보 업데이트 실패" }, { status: 500 })

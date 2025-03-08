@@ -144,6 +144,8 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
   // Function to update a user's role
   const updateUserRole = async (teamId: string, userId: string, newRole: "admin" | "leader" | "member") => {
     try {
+      console.log("Updating user role with:", { teamId, userId, role: newRole })
+      
       // API 호출로 사용자 역할 업데이트
       const response = await fetch("/api/users/role", {
         method: "PUT",
@@ -151,7 +153,14 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
         body: JSON.stringify({ userId, teamId, role: newRole }),
       })
 
-      if (!response.ok) throw new Error("사용자 역할 업데이트 실패")
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("API error:", errorData)
+        throw new Error(errorData.error || "사용자 역할 업데이트 실패")
+      }
+
+      const updatedUser = await response.json()
+      console.log("User role updated successfully:", updatedUser)
 
       // UI 업데이트 (기존 로직 유지)
       const updatedTeams = teams.map((team) => {
@@ -174,8 +183,8 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
 
       onUpdateTeams(updatedTeams)
     } catch (error) {
-      console.error(error)
-      alert("사용자 역할 업데이트 중 오류가 발생했습니다.")
+      console.error("Error updating user role:", error)
+      alert(`사용자 역할 업데이트 중 오류가 발생했습니다`)
     }
   }
 
