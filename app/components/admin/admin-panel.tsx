@@ -142,26 +142,41 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
   }
 
   // Function to update a user's role
-  const updateUserRole = (teamId: string, userId: string, newRole: "admin" | "leader" | "member") => {
-    const updatedTeams = teams.map((team) => {
-      if (team.id === teamId) {
-        return {
-          ...team,
-          members: team.members.map((member) => {
-            if (member.id === userId) {
-              return {
-                ...member,
-                role: newRole,
-              }
-            }
-            return member
-          }),
-        }
-      }
-      return team
-    })
+  const updateUserRole = async (teamId: string, userId: string, newRole: "admin" | "leader" | "member") => {
+    try {
+      // API 호출로 사용자 역할 업데이트
+      const response = await fetch("/api/users/role", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, teamId, role: newRole }),
+      })
 
-    onUpdateTeams(updatedTeams)
+      if (!response.ok) throw new Error("사용자 역할 업데이트 실패")
+
+      // UI 업데이트 (기존 로직 유지)
+      const updatedTeams = teams.map((team) => {
+        if (team.id === teamId) {
+          return {
+            ...team,
+            members: team.members.map((member) => {
+              if (member.id === userId) {
+                return {
+                  ...member,
+                  role: newRole,
+                }
+              }
+              return member
+            }),
+          }
+        }
+        return team
+      })
+
+      onUpdateTeams(updatedTeams)
+    } catch (error) {
+      console.error(error)
+      alert("사용자 역할 업데이트 중 오류가 발생했습니다.")
+    }
   }
 
   // 팀 추가
@@ -210,7 +225,7 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
   
       const updatedTeam = await response.json()
       const updatedTeams = teams.map((team) =>
-        team.id === updatedTeam.id ? updatedTeam : team
+        team.id === updatedTeam.id ? { ...updatedTeam, members: team.members } : team
       )
       onUpdateTeams(updatedTeams)
       setIsEditTeamOpen(false)
@@ -263,64 +278,85 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
   }
 
   // Function to update a user
-  const handleUpdateUser = () => {
+  const handleUpdateUser = async () => {
     if (!editingUser) return
     if (!editUserName.trim()) {
       alert("사용자 이름을 입력해주세요.")
       return
     }
 
-    // Check if team changed
-    const isTeamChanged = editingUser.teamId !== editUserTeamId
+    try {
+      // API 호출로 사용자 정보 업데이트
+      const response = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editingUser.id,
+          name: editUserName,
+          teamId: editUserTeamId,
+          role: editUserRole,
+          avatar: editUserAvatar,
+        }),
+      })
 
-    const updatedTeams = teams.map((team) => {
-      // If this is the new team, add the user
-      if (team.id === editUserTeamId) {
-        // If team didn't change, just update the user
-        if (!isTeamChanged) {
-          return {
-            ...team,
-            members: team.members.map((member) => {
-              if (member.id === editingUser.id) {
-                return {
-                  ...member,
-                  name: editUserName,
-                  avatar: editUserAvatar,
-                  role: editUserRole,
+      if (!response.ok) throw new Error("사용자 정보 업데이트 실패")
+      
+      // UI 업데이트 (기존 로직 유지)
+      // Check if team changed
+      const isTeamChanged = editingUser.teamId !== editUserTeamId
+
+      const updatedTeams = teams.map((team) => {
+        // If this is the new team, add the user
+        if (team.id === editUserTeamId) {
+          // If team didn't change, just update the user
+          if (!isTeamChanged) {
+            return {
+              ...team,
+              members: team.members.map((member) => {
+                if (member.id === editingUser.id) {
+                  return {
+                    ...member,
+                    name: editUserName,
+                    avatar: editUserAvatar,
+                    role: editUserRole,
+                  }
                 }
-              }
-              return member
-            }),
+                return member
+              }),
+            }
+          }
+          // If team changed, add user to new team
+          else {
+            const updatedMember = {
+              ...editingUser,
+              name: editUserName,
+              avatar: editUserAvatar,
+              role: editUserRole,
+            }
+            return {
+              ...team,
+              members: [...team.members, updatedMember],
+            }
           }
         }
-        // If team changed, add user to new team
-        else {
-          const updatedMember = {
-            ...editingUser,
-            name: editUserName,
-            avatar: editUserAvatar,
-            role: editUserRole,
-          }
+
+        // If this is the old team and team changed, remove the user
+        if (isTeamChanged && team.id === editingUser.teamId) {
           return {
             ...team,
-            members: [...team.members, updatedMember],
+            members: team.members.filter((member) => member.id !== editingUser.id),
           }
         }
-      }
 
-      // If this is the old team and team changed, remove the user
-      if (isTeamChanged && team.id === editingUser.teamId) {
-        return {
-          ...team,
-          members: team.members.filter((member) => member.id !== editingUser.id),
-        }
-      }
+        return team
+      })
 
-      return team
-    })
-
-    onUpdateTeams(updatedTeams)
-    setIsEditUserOpen(false)
+      onUpdateTeams(updatedTeams)
+      setIsEditUserOpen(false)
+    } catch (error) {
+      console.error(error)
+      alert("사용자 정보 업데이트 중 오류 발생")
+    }
   }
 
   // Get all users across all teams
@@ -723,5 +759,3 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
     </Dialog>
   )
 }
-
-
