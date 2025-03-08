@@ -13,13 +13,8 @@ const uploadDir = path.join(process.cwd(), "uploads");
 // 최대 파일 크기 설정 (20MB)
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
-// 중요: Next.js App Router에서는 이렇게 요청 크기를 제한하는 설정을 추가
-export const config = {
-  api: {
-    bodyParser: false, // 우리가 직접 formData를 파싱할 것임
-    responseLimit: false, // 응답 크기 제한 해제
-  },
-};
+// Next.js 14 App Router에서는 이러한 방식으로 설정해야 함
+// bodyParser 설정은 더 이상 사용되지 않음
 
 export async function POST(req: NextRequest) {
   try {
