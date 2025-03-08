@@ -65,6 +65,7 @@ const formatTime = (date: Date) => {
 export default function TeamProgressPage() {
   // 상태 변수들
   const [teamsState, setTeamsState] = useState<Team[]>([])
+  const [allTeams, setAllTeams] = useState<{id: string, name: string}[]>([]) // Dev Team을 포함한 모든 팀
   const [activeTeam, setActiveTeam] = useState("")
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatLogs, setChatLogs] = useState<ChatMessage[]>([])
@@ -89,8 +90,12 @@ export default function TeamProgressPage() {
         // 팀 데이터 가져오기
         const teamsResponse = await fetch("/api/teams")
         const teamsData = await teamsResponse.json()
-        // "Dev Team" 필터링: 페이지에 표시하거나 비교에 사용하지 않음
+        
+        // 대시보드 표시용 팀 데이터 (Dev Team 제외)
         const filteredTeamsData = teamsData.filter((team: any) => team.name !== "Dev Team")
+        
+        // 로그인/채팅용 전체 팀 데이터 (Dev Team 포함)
+        const allTeamsData = teamsData
 
         // 사용자 데이터 가져오기
         const usersResponse = await fetch("/api/users")
@@ -104,7 +109,7 @@ export default function TeamProgressPage() {
         const logsResponse = await fetch("/api/chat/logs")
         const logsData = await logsResponse.json()
 
-        // 팀 데이터 구성
+        // 대시보드용 팀 데이터 구성 (Dev Team 제외)
         const formattedTeams = filteredTeamsData.map((team: any) => {
           const teamUsers = usersData.filter((user: any) => user.teamId === team.id)
 
@@ -129,10 +134,19 @@ export default function TeamProgressPage() {
           }
         })
 
+        // 로그인 다이얼로그용 전체 팀 데이터 구성 (Dev Team 포함)
+        const formattedAllTeams = allTeamsData.map((team: any) => ({
+          id: team.id,
+          name: team.name,
+        }))
+
         setTeamsState(formattedTeams)
+        setAllTeams(formattedAllTeams)
+        
         if (formattedTeams.length > 0) {
           setActiveTeam(formattedTeams[0].id)
         }
+        
         // 채팅 메시지 포맷
         const formattedChatMessages = chatData.map((msg: any) => ({
           id: msg.id,
@@ -315,14 +329,43 @@ export default function TeamProgressPage() {
   // 로그인 처리
   const handleLogin = (user: UserData) => {
     setLoggedInUser(user)
+    
+    // Dev Team인 경우를 포함하여 처리
     const team = teamsState.find((t) => t.id === user.teamId)
     if (team) {
+      // 대시보드에 표시되는 팀인 경우
       const member = team.members.find((m) => m.id === user.id)
       if (member) {
         setCurrentUser(member)
+      } else {
+        // 멤버 정보가 없는 경우 - 기본 정보로 설정
+        setCurrentUser({
+          id: user.id,
+          name: user.name,
+          avatar: user.avatar || "/placeholder.svg?height=32&width=32",
+          progress: 0,
+          goal: 100,
+          dailyChecks: Array(45).fill(false),
+          role: user.role,
+        })
+      }
+      setActiveTeam(user.teamId)
+    } else {
+      // Dev Team 등 대시보드에 표시되지 않는 팀의 사용자
+      setCurrentUser({
+        id: user.id,
+        name: user.name,
+        avatar: user.avatar || "/placeholder.svg?height=32&width=32",
+        progress: 0,
+        goal: 100,
+        dailyChecks: Array(45).fill(false),
+        role: user.role,
+      })
+      // 첫 번째 표시 가능한 팀으로 설정
+      if (teamsState.length > 0) {
+        setActiveTeam(teamsState[0].id)
       }
     }
-    setActiveTeam(user.teamId)
   }
 
   // 로그아웃 처리
@@ -392,46 +435,56 @@ export default function TeamProgressPage() {
   const sendingRef = useRef(false)
 
   const sendMessage = async () => {
-    if (newMessage.trim() === "" || !currentUser || sendingRef.current) return;
+    // 로그인 되어 있지만 currentUser가 없는 경우(Dev Team 등)에도 메시지를 보낼 수 있도록 수정
+    if (newMessage.trim() === "" || !loggedInUser || sendingRef.current) return;
     sendingRef.current = true; // 중복 방지
-  
+
     try {
+      // currentUser가 없는 경우(Dev Team 등) loggedInUser 정보 사용
+      const userId = currentUser?.id || loggedInUser.id;
+      
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: currentUser.id,
+          userId: userId,
           message: newMessage,
         }),
       });
-  
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "메시지 전송 실패");
       }
-  
+
       const messageData = await response.json();
-  
+
       const newChatMessage = {
         id: messageData.id,
-        userId: messageData.userId,
-        userName: currentUser.name,
-        userAvatar: currentUser.avatar,
+        userId: userId,
+        userName: loggedInUser.name, // 항상 loggedInUser의 이름 사용
+        userAvatar: loggedInUser.avatar || "/placeholder.svg?height=40&width=40", // 항상 loggedInUser의 아바타 사용
         message: newMessage,
         timestamp: new Date(messageData.timestamp),
       };
-  
-      // 상태 업데이트 후 자동 스크롤
+
       setChatMessages((prev) => [...prev, newChatMessage]);
-  
       setNewMessage(""); // 입력 필드 초기화
     } catch (error) {
       console.error("메시지 전송 실패:", error);
       alert("메시지 전송에 실패했습니다.");
     } finally {
-      sendingRef.current = false; // 즉시 초기화
+      sendingRef.current = false; // 플래그 초기화
+    }
+  };
+
+  // Enter 키로 메시지 전송 처리하는 함수
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
   };
 
@@ -446,67 +499,67 @@ export default function TeamProgressPage() {
   }, [chatMessages]);
 
   // 사용자 계정 정보 변경 감지 후 채팅 메시지 업데이트
-useEffect(() => {
-  if (!loggedInUser) return;
+  useEffect(() => {
+    if (!loggedInUser) return;
 
-  setChatMessages((prevMessages) =>
-    prevMessages.map((msg) =>
-      msg.userId === loggedInUser.id
-        ? { ...msg, userName: loggedInUser.name, userAvatar: loggedInUser.avatar }
-        : msg
-    )
-  );
-}, [loggedInUser]);
+    setChatMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg.userId === loggedInUser.id
+          ? { ...msg, userName: loggedInUser.name, userAvatar: loggedInUser.avatar }
+          : msg
+      )
+    );
+  }, [loggedInUser]);
 
   // 자정 초기화 처리
   // 채팅 메시지 최신 상태를 유지하는 ref
-const chatMessagesRef = useRef(chatMessages);
-useEffect(() => {
-  chatMessagesRef.current = chatMessages;
-}, [chatMessages]);
+  const chatMessagesRef = useRef(chatMessages);
+  useEffect(() => {
+    chatMessagesRef.current = chatMessages;
+  }, [chatMessages]);
 
-useEffect(() => {
-  const scheduleMidnightReset = () => {
-    const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(0, 0, 0, 0);
-    // 내일 자정까지의 ms 계산
-    const nextMidnight = midnight.getTime() + 86400000;
-    const timeUntilMidnight = nextMidnight - now.getTime();
+  useEffect(() => {
+    const scheduleMidnightReset = () => {
+      const now = new Date();
+      const midnight = new Date();
+      midnight.setHours(0, 0, 0, 0);
+      // 내일 자정까지의 ms 계산
+      const nextMidnight = midnight.getTime() + 86400000;
+      const timeUntilMidnight = nextMidnight - now.getTime();
 
-    const timerId = setTimeout(async () => {
-      try {
-        const messagesToLog = chatMessagesRef.current;
-        // 채팅 로그 API에 메시지 저장
-        for (const message of messagesToLog) {
-          await fetch("/api/chat/logs", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: message.userId,
-              message: message.message,
-              timestamp: message.timestamp,
-            }),
-          });
+      const timerId = setTimeout(async () => {
+        try {
+          const messagesToLog = chatMessagesRef.current;
+          // 채팅 로그 API에 메시지 저장
+          for (const message of messagesToLog) {
+            await fetch("/api/chat/logs", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: message.userId,
+                message: message.message,
+                timestamp: message.timestamp,
+              }),
+            });
+          }
+          // 채팅 로그와 화면 초기화
+          setChatLogs((prevLogs) => [...prevLogs, ...messagesToLog]);
+          setChatMessages([]);
+          setLastResetDate(new Date().toDateString());
+        } catch (error) {
+          console.error("채팅 로그 저장 실패:", error);
+        } finally {
+          // 다음 자정 타이머 예약
+          scheduleMidnightReset();
         }
-        // 채팅 로그와 화면 초기화
-        setChatLogs((prevLogs) => [...prevLogs, ...messagesToLog]);
-        setChatMessages([]);
-        setLastResetDate(new Date().toDateString());
-      } catch (error) {
-        console.error("채팅 로그 저장 실패:", error);
-      } finally {
-        // 다음 자정 타이머 예약
-        scheduleMidnightReset();
-      }
-    }, timeUntilMidnight);
+      }, timeUntilMidnight);
 
-    return timerId;
-  };
+      return timerId;
+    };
 
-  const timerId = scheduleMidnightReset();
-  return () => clearTimeout(timerId);
-}, []);
+    const timerId = scheduleMidnightReset();
+    return () => clearTimeout(timerId);
+  }, []);
 
 
   const currentTeam =
@@ -553,12 +606,12 @@ useEffect(() => {
             {loggedInUser ? (
               <ProfileDialog
                 user={loggedInUser}
-                teams={teamsState.map((t) => ({ id: t.id, name: t.name }))}
+                teams={allTeams}
                 onUpdateProfile={handleUpdateProfile}
                 onLogout={handleLogout}
               />
             ) : (
-              <LoginDialog onLogin={handleLogin} teams={teamsState.map((t) => ({ id: t.id, name: t.name }))} />
+              <LoginDialog onLogin={handleLogin} teams={allTeams} />
             )}
           </div>
         </div>
@@ -896,9 +949,9 @@ useEffect(() => {
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex gap-2 ${message.userId === currentUser?.id ? "justify-end" : "justify-start"}`}
+                    className={`flex gap-2 ${message.userId === loggedInUser?.id ? "justify-end" : "justify-start"}`}
                   >
-                    {message.userId !== currentUser?.id && (
+                    {message.userId !== loggedInUser?.id && (
                       <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
                         <AvatarImage src={message.userAvatar} alt={message.userName} />
                         <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
@@ -906,18 +959,18 @@ useEffect(() => {
                     )}
                     <div
                       className={`max-w-[70%] ${
-                        message.userId === currentUser?.id
+                        message.userId === loggedInUser?.id
                           ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none"
                           : "bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-tl-none"
                       } p-3`}
                     >
-                      {message.userId !== currentUser?.id && (
+                      {message.userId !== loggedInUser?.id && (
                         <p className="text-xs font-medium mb-1">{message.userName}</p>
                       )}
                       <p className="break-words">{message.message}</p>
                       <p className="text-xs opacity-70 text-right mt-1">{formatTime(message.timestamp)}</p>
                     </div>
-                    {message.userId === currentUser?.id && (
+                    {message.userId === loggedInUser?.id && (
                       <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
                         <AvatarImage src={message.userAvatar} alt={message.userName} />
                         <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
@@ -935,9 +988,15 @@ useEffect(() => {
                     placeholder="메시지를 입력하세요..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     className="rounded-full bg-gray-100 dark:bg-gray-800 border-0 focus-visible:ring-primary"
                   />
-                  <Button size="icon" className="rounded-full" onClick={sendMessage}>
+                  <Button 
+                    size="icon" 
+                    className="rounded-full" 
+                    onClick={sendMessage}
+                    disabled={!newMessage.trim() || sendingRef.current}
+                  >
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
@@ -1004,9 +1063,9 @@ useEffect(() => {
                     {chatMessages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex gap-2 ${message.userId === currentUser?.id ? "justify-end" : "justify-start"}`}
+                        className={`flex gap-2 ${message.userId === loggedInUser?.id ? "justify-end" : "justify-start"}`}
                       >
-                        {message.userId !== currentUser?.id && (
+                        {message.userId !== loggedInUser?.id && (
                           <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
                             <AvatarImage src={message.userAvatar} alt={message.userName} />
                             <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
@@ -1014,18 +1073,18 @@ useEffect(() => {
                         )}
                         <div
                           className={`max-w-[70%] ${
-                            message.userId === currentUser?.id
+                            message.userId === loggedInUser?.id
                               ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none"
                               : "bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-tl-none"
                           } p-3`}
                         >
-                          {message.userId !== currentUser?.id && (
+                          {message.userId !== loggedInUser?.id && (
                             <p className="text-xs font-medium mb-1">{message.userName}</p>
                           )}
                           <p>{message.message}</p>
                           <p className="text-xs opacity-70 text-right mt-1">{formatTime(message.timestamp)}</p>
                         </div>
-                        {message.userId === currentUser?.id && (
+                        {message.userId === loggedInUser?.id && (
                           <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
                             <AvatarImage src={message.userAvatar} alt={message.userName} />
                             <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
@@ -1043,9 +1102,15 @@ useEffect(() => {
                         placeholder="메시지를 입력하세요..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         className="rounded-full bg-gray-100 dark:bg-gray-800 border-0"
                       />
-                      <Button size="icon" className="rounded-full" onClick={sendMessage}>
+                      <Button 
+                        size="icon" 
+                        className="rounded-full" 
+                        onClick={sendMessage}
+                        disabled={!newMessage.trim() || sendingRef.current}
+                      >
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1077,5 +1142,3 @@ useEffect(() => {
     </div>
   )
 }
-
-
