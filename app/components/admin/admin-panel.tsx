@@ -146,11 +146,11 @@ export function AdminPanel({ teams, onUpdateTeams, isAdmin, chatLogs }: AdminPan
     try {
       console.log("Updating user role with:", { teamId, userId, role: newRole })
       
-      // API 호출로 사용자 역할 업데이트
+      // API 호출로 사용자 역할 업데이트 - 여기가 수정된 부분 (userId -> id)
       const response = await fetch("/api/users/role", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, teamId, role: newRole }),
+        body: JSON.stringify({ id: userId, role: newRole }),
       })
 
       if (!response.ok) {
