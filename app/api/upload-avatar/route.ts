@@ -10,8 +10,8 @@ export const runtime = 'nodejs'; // Node.js 런타임 사용
 // 업로드 디렉토리를 프로젝트 루트의 uploads 폴더로 변경
 const uploadDir = path.join(process.cwd(), "uploads");
 
-// 최대 파일 크기 설정 (10MB)
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+// 최대 파일 크기 설정 (20MB)
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 export async function POST(req: NextRequest) {
   try {
