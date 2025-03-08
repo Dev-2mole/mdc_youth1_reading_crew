@@ -23,13 +23,18 @@ export async function PUT(req: Request) {
     
     console.log("Updating user info:", { id, name, teamId, role, avatar })
     
+    // id 값이 없는 경우 오류 반환
+    if (!id) {
+      return NextResponse.json({ error: "사용자 ID가 필요합니다." }, { status: 400 })
+    }
+    
     const updatedUser = await prisma.user.update({
       where: { id },
       data: {
-        name,
-        teamId,
-        role,
-        avatar,
+        ...(name !== undefined && { name }),
+        ...(teamId !== undefined && { teamId }),
+        ...(role !== undefined && { role }),
+        ...(avatar !== undefined && { avatar }),
       },
       include: {
         team: true
@@ -44,6 +49,7 @@ export async function PUT(req: Request) {
       name: updatedUser.name,
       cohort: updatedUser.cohort || "",
       teamId: updatedUser.teamId || "",
+      team: updatedUser.team,
       avatar: updatedUser.avatar || "",
       role: updatedUser.role as "admin" | "leader" | "member"
     }
@@ -59,6 +65,12 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const { id } = await req.json()
+    
+    // id 값이 없는 경우 오류 반환
+    if (!id) {
+      return NextResponse.json({ error: "사용자 ID가 필요합니다." }, { status: 400 })
+    }
+    
     await prisma.user.delete({ where: { id } })
     return NextResponse.json({ message: "사용자 삭제 완료" })
   } catch (error) {
