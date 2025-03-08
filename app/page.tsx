@@ -633,7 +633,8 @@ export default function TeamProgressPage() {
   
   // 레이싱 트랙 위치 계산 함수 수정
   const calculateRacePosition = (progress: number) => {
-    return progress * 2; // 원래 계산 방식 유지
+    // 진행도에 따라 0%는 왼쪽 경계(0%)에, 100%는 오른쪽 경계(100%)에 위치하도록 조정
+    return Math.min(Math.max(progress, 0), 100); // 0-100% 범위로 제한
   }
 
   const setTrackRef = (element: HTMLDivElement | null, teamId: string) => {
@@ -760,11 +761,11 @@ export default function TeamProgressPage() {
             {teamsState.map((team) => (
               <div key={team.id} className={team.id === activeTeam ? "block" : "hidden"}>
                 {activeView === "track" && (
-                  <div
+                <div
                   ref={(el) => setTrackRef(el, team.id)}
                   className="relative w-full mb-8 rounded-xl border border-gray-200 dark:border-gray-700 cursor-grab"
                   style={{
-                    height: `${Math.max(450, team.members.length * 80)}px`,  // 레인 길이 
+                    height: `${Math.max(380, team.members.length * 70)}px`,  // 레인 길이 조정
                     overflowX: "auto",
                     scrollbarWidth: "none", // Firefox에서 스크롤바 숨기기
                     msOverflowStyle: "none", // IE에서 스크롤바 숨기기
@@ -781,97 +782,101 @@ export default function TeamProgressPage() {
                       display: none;
                     }
                   `}</style>              
-                    <div className="absolute inset-0 bg-gray-800 rounded-lg" style={{ width: "200%" }}>
-                      <div className="absolute inset-0 flex flex-col">
-                        {Array.from({ length: 6 }).map((_, i) => (
-                          <div key={i} className="flex-1 border-b border-white/30" />
-                        ))}
-                      </div>
-                      
-                      {/* 시작 플래그 */}
-                      <div className="absolute top-0 left-0 h-full w-[10px] bg-white flex items-center justify-center z-10"></div>
-                      
-                      {/* 중간 선 */}
-                      <div className="absolute top-0 left-1/2 h-full w-[10px] bg-yellow-500 flex items-center justify-center z-10 transform -translate-x-1/2">
-                        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-                      </div>
-                      
-                      {/* 종료 플래그 */}
-                      <div className="absolute top-0 right-0 h-full w-[10px] bg-white flex items-center justify-center z-10" style={{ right: "0" }}></div>
-                      
-                      {/* 시작 체크무늬 */}
-                      <div className="absolute top-0 left-0 h-full w-[10px] flex flex-col z-20">
-                        {Array.from({ length: 10 }).map((_, i) => (
-                          <div key={i} className={`flex-1 ${i % 2 === 0 ? "bg-white" : "bg-black"}`} />
-                        ))}
-                      </div>
-                      
-                      {/* 종료 체크무늬 */}
-                      <div className="absolute top-0 right-0 h-full w-[10px] flex flex-col z-20" style={{ right: "0" }}>
-                        {Array.from({ length: 10 }).map((_, i) => (
-                          <div key={i} className={`flex-1 ${i % 2 === 0 ? "bg-white" : "bg-black"}`} />
-                        ))}
-                      </div>
+                  <div className="absolute inset-0 bg-gray-800 rounded-lg" style={{ width: "200%" }}>
+                    <div className="absolute inset-0 flex flex-col">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="flex-1 border-b border-white/30" />
+                      ))}
                     </div>
+                    
+                    {/* 시작 플래그 */}
+                    <div className="absolute top-0 left-0 h-full w-[10px] bg-white flex items-center justify-center z-10"></div>
+                    
+                    {/* 중간 선 */}
+                    <div className="absolute top-0 left-1/2 h-full w-[10px] bg-yellow-500 flex items-center justify-center z-10 transform -translate-x-1/2">
+                      <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+                    </div>
+                    
+                    {/* 종료 플래그 */}
+                    <div className="absolute top-0 right-0 h-full w-[10px] bg-white flex items-center justify-center z-10" style={{ right: "0" }}></div>
+                    
+                    {/* 시작 체크무늬 */}
+                    <div className="absolute top-0 left-0 h-full w-[10px] flex flex-col z-20">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className={`flex-1 ${i % 2 === 0 ? "bg-white" : "bg-black"}`} />
+                      ))}
+                    </div>
+                    
+                    {/* 종료 체크무늬 */}
+                    <div className="absolute top-0 right-0 h-full w-[10px] flex flex-col z-20" style={{ right: "0" }}>
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className={`flex-1 ${i % 2 === 0 ? "bg-white" : "bg-black"}`} />
+                      ))}
+                    </div>
+                  </div>
 
-                    {/* 팀원 아바타 */}
-                    {team.members.map((member, index) => {
-                      const position = calculateRacePosition(member.progress);
-                      const today = new Date();
-                      const todayIndex = weekdayDates.findIndex(
-                        (date) =>
-                          date.getDate() === today.getDate() &&
-                          date.getMonth() === today.getMonth() &&
-                          date.getFullYear() === today.getFullYear()
-                      );
-                      const checkedToday = todayIndex !== -1 && member.dailyChecks[todayIndex];
-                      const lanePosition = ((index % 4) + 1) * 12.5 + 12.5;
-                      const isSelected = selectedMember === member.id;
+                  {/* 팀원 아바타 */}
+                  {team.members.map((member, index) => {
+                    const position = calculateRacePosition(member.progress);
+                    const today = new Date();
+                    const todayIndex = weekdayDates.findIndex(
+                      (date) =>
+                        date.getDate() === today.getDate() &&
+                        date.getMonth() === today.getMonth() &&
+                        date.getFullYear() === today.getFullYear()
+                    );
+                    const checkedToday = todayIndex !== -1 && member.dailyChecks[todayIndex];
+                    // 모바일과 PC에서 일관된 간격을 유지하기 위해 계산 방식 수정
+                    // 트랙 높이를 5개의 레인으로 나누고, 각 레인의 중앙에 위치하도록 조정
+                    const totalLanes = 5;
+                    const laneIndex = index % totalLanes;
+                    const lanePosition = (laneIndex + 0.5) * (100 / totalLanes); // 각 레인의 중앙에 위치
+                    const isSelected = selectedMember === member.id;
 
-                      return (
-                        <div
-                          key={member.id}
-                          className="absolute transform -translate-y-1/2 transition-all duration-1000 ease-in-out z-30"
-                          style={{
-                            left: `${position}%`,
-                            top: `${lanePosition}%`,
-                          }}
+                    return (
+                      <div
+                        key={member.id}
+                        className="absolute transform -translate-y-1/2 transition-all duration-1000 ease-in-out z-30"
+                        style={{
+                          left: `${position}%`,
+                          top: `${lanePosition}%`,
+                        }}
+                      >
+                        <div className="relative">
+                        <Avatar 
+                          className={`h-10 w-10 md:h-14 md:w-14 border-2 border-white shadow-lg ${isSelected ? 'ring-4 ring-primary ring-offset-2' : ''} cursor-pointer transition-all duration-300`} 
+                          onClick={() => setSelectedMember(isSelected ? null : member.id)}
                         >
-                          <div className="relative">
-                          <Avatar 
-                            className={`h-12 w-12 md:h-16 md:w-16 border-2 border-white shadow-lg ${isSelected ? 'ring-4 ring-primary ring-offset-2' : ''} cursor-pointer transition-all duration-300`} 
-                            onClick={() => setSelectedMember(isSelected ? null : member.id)}
-                          >
-                            <AvatarImage src={member.avatar} alt={member.name} />
-                            <AvatarFallback style={{ backgroundColor: team.color }}>
-                              {member.name.substring(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
-                          {checkedToday && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-green-500 rounded-full border border-white flex items-center justify-center z-20">
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-2 w-2 md:h-3 md:w-3 text-white"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        {/* 선택된 경우에만 이름 표시 (크기 증가) */}
-                        {isSelected && (
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 md:mt-3 bg-white dark:bg-gray-800 p-1.5 md:p-2.5 rounded-md shadow-lg text-xs md:text-sm whitespace-nowrap z-40 min-w-[90px] md:min-w-[120px] text-center border border-gray-200 dark:border-gray-700">
-                            <div className="font-bold text-sm md:text-base">{member.name}</div>
-                            <div className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">{member.progress}%</div>
+                          <AvatarImage src={member.avatar} alt={member.name} />
+                          <AvatarFallback style={{ backgroundColor: team.color }}>
+                            {member.name.substring(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {checkedToday && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 md:w-4 md:h-4 bg-green-500 rounded-full border border-white flex items-center justify-center z-20">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-1.5 w-1.5 md:h-2.5 md:w-2.5 text-white"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
                           </div>
                         )}
                       </div>
+                      {/* 선택된 경우에만 이름 표시 (크기 증가) */}
+                      {isSelected && (
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 md:mt-3 bg-white dark:bg-gray-800 p-1.5 md:p-2.5 rounded-md shadow-lg text-xs md:text-sm whitespace-nowrap z-40 min-w-[90px] md:min-w-[120px] text-center border border-gray-200 dark:border-gray-700">
+                          <div className="font-bold text-sm md:text-base">{member.name}</div>
+                          <div className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">{member.progress}%</div>
+                        </div>
+                      )}
+                    </div>
                     );
                   })}
                 </div>
