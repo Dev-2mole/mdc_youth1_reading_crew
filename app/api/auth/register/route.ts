@@ -7,8 +7,6 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { id, password, name, cohort, teamId } = body
 
-    console.log("회원가입 요청:", body)
-
     // 아이디 중복 검사
     const existingUser = await prisma.user.findUnique({
       where: { id },
@@ -20,7 +18,6 @@ export async function POST(request: Request) {
 
     // 비밀번호 해싱
     const hashedPassword = await hash(password, 10)
-    console.log("비밀번호 해시 완료")
 
     // 유저 생성
     const newUser = await prisma.user.create({
@@ -35,7 +32,6 @@ export async function POST(request: Request) {
       },
     })
 
-    console.log("회원가입 성공:", newUser)
     return NextResponse.json(newUser)
   } catch (error) {
     console.error("회원가입 API 에러:", error)

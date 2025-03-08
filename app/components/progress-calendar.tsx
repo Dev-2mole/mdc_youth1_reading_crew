@@ -29,6 +29,12 @@ export function ProgressCalendar({
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
+  // 요일 표시 함수 추가
+  const getWeekdayLabel = (date: Date) => {
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
+    return weekdays[date.getDay()]
+  }
+
   const getMonthKey = (date: Date) => {
     return `${date.getFullYear()}-${date.getMonth()}`
   }
@@ -111,18 +117,18 @@ export function ProgressCalendar({
   const completionPercentage = currentItems.length > 0 ? Math.round((completedCount / currentItems.length) * 100) : 0
 
   return (
-    <Card className="p-4 shadow-sm border-0">
-      <div className="flex items-center justify-between mb-4">
+    <Card className="p-2 md:p-4 shadow-sm border-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 md:mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-medium">진행 체크 캘린더</h3>
         </div>
-        <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-medium">
-          2025.3.3 ~ 2025.5.9 (평일)
+        <div className="bg-primary/10 text-primary px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+          2025.3.10 ~ 2025.5.9 (평일)
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -159,65 +165,81 @@ export function ProgressCalendar({
             <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 border-b">
               <h4 className="text-sm font-medium">{getMonthName(currentMonthKey)}</h4>
             </div>
-            <div className="p-3 grid grid-cols-7 gap-2">
-              {currentItems.map(({ date, index, checked }) => (
-                <div key={index} className="flex flex-col items-center">
-                  <span className="text-xs mb-1 font-medium">{formatDate(date)}</span>
-                  <div className="relative">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div>
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={() => onCheckChange(index)}
-                              className={`data-[state=checked]:bg-primary h-7 w-7 rounded-md transition-all ${
-                                !canModify || (isPastDate(date) && !isAdmin) || (isFutureDate(date) && !isAdmin)
-                                  ? "opacity-70 cursor-not-allowed"
-                                  : "hover:scale-110"
-                              }`}
-                              disabled={!canModify || (isFutureDate(date) && !isAdmin)}
-                            />
-                            {checked && (
-                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white"></div>
-                            )}
-                          </div>
-                        </TooltipTrigger>
-                        {!canModify && (
-                          <TooltipContent className="bg-black/80 text-white">
-                            <p>자신 외 계정은 수정할 수 없습니다.</p>
-                          </TooltipContent>
-                        )}
-                        {isPastDate(date) && !checked && (
-                          <TooltipContent className="bg-black/80 text-white">
-                            <p>리더만 과거 날짜를 체크할 수 있습니다.</p>
-                          </TooltipContent>
-                        )}
-                        {isFutureDate(date) && !isAdmin && (
-                          <TooltipContent className="bg-black/80 text-white">
-                            <p>미래 날짜는 체크할 수 없습니다.</p>
-                          </TooltipContent>
-                        )}
-                        {isFutureDate(date) && isAdmin && (
-                          <TooltipContent className="bg-black/80 text-white">
-                            <p>미래 날짜는 체크할 수 없습니다.</p>
-                          </TooltipContent>
-                        )}
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+            <div className="p-1 sm:p-3 grid grid-cols-5 gap-1 sm:gap-2">
+              {/* 요일 헤더 추가 */}
+              {["월", "화", "수", "목", "금"].map((day) => (
+                <div key={day} className="flex justify-center">
+                  <span className="text-xs font-bold text-gray-500">{day}</span>
                 </div>
               ))}
+              
+              {/* 날짜와 체크박스 (요일별로 그룹화) */}
+              {currentItems.map(({ date, index, checked }) => {
+                const weekday = getWeekdayLabel(date);
+                // 주말(토,일)은 표시하지 않음
+                if (weekday === "토" || weekday === "일") return null;
+                
+                return (
+                  <div 
+                    key={index} 
+                    className="flex flex-col items-center justify-start pt-1"
+                  >
+                    <span className="text-xs mb-1 font-medium text-center">{formatDate(date)}</span>
+                    <div className="relative">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div>
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => onCheckChange(index)}
+                                className={`data-[state=checked]:bg-primary h-6 w-6 sm:h-7 sm:w-7 rounded-md transition-all ${
+                                  !canModify || (isPastDate(date) && !isAdmin) || (isFutureDate(date) && !isAdmin)
+                                    ? "opacity-70 cursor-not-allowed"
+                                    : "hover:scale-110"
+                                }`}
+                                disabled={!canModify || (isFutureDate(date) && !isAdmin)}
+                              />
+                              {checked && (
+                                <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full border border-white"></div>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          {!canModify && (
+                            <TooltipContent className="bg-black/80 text-white text-xs">
+                              <p>자신 외 계정은 수정할 수 없습니다.</p>
+                            </TooltipContent>
+                          )}
+                          {isPastDate(date) && !checked && (
+                            <TooltipContent className="bg-black/80 text-white text-xs">
+                              <p>리더만 과거 날짜를 체크할 수 있습니다.</p>
+                            </TooltipContent>
+                          )}
+                          {isFutureDate(date) && !isAdmin && (
+                            <TooltipContent className="bg-black/80 text-white text-xs">
+                              <p>미래 날짜는 체크할 수 없습니다.</p>
+                            </TooltipContent>
+                          )}
+                          {isFutureDate(date) && isAdmin && (
+                            <TooltipContent className="bg-black/80 text-white text-xs">
+                              <p>미래 날짜는 체크할 수 없습니다.</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      <div className="mt-4 flex justify-between text-xs text-muted-foreground">
-        <span>시작일: 2025.3.3</span>
+      <div className="mt-3 md:mt-4 flex justify-between text-xs text-muted-foreground">
+        <span>시작일: 2025.3.10</span>
         <span>종료일: 2025.5.9</span>
       </div>
     </Card>
   )
 }
-

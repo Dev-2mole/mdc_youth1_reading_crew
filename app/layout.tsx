@@ -7,9 +7,9 @@ import { ThemeProvider } from "./components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "YOUTH1 READING CREW",
+  title: "MDCYOUTH1 READING CREW",
   description: "청년 1부 READING CREW",
-    generator: '2mole'
+  viewport: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
 }
 
 export default function RootLayout({

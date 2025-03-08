@@ -79,6 +79,12 @@ export default function TeamProgressPage() {
   const [lastResetDate, setLastResetDate] = useState<string>(new Date().toDateString())
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const trackRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [startX, setStartX] = useState<number>(0);
+  const [scrollLeft, setScrollLeft] = useState<number>(0);
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
+  
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
@@ -426,11 +432,6 @@ export default function TeamProgressPage() {
     }
   }
 
-  // 레이싱 트랙 위치 계산
-  const calculateRacePosition = (progress: number) => {
-    return progress
-  }
-
   // 메시지 전송 처리
   const sendingRef = useRef(false)
 
@@ -497,6 +498,31 @@ export default function TeamProgressPage() {
       }
     }
   }, [chatMessages]);
+
+  // 트랙 내부 영역
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // 트랙 영역 요소 선택
+      const trackElements = document.querySelectorAll('[data-track-area="true"]');
+      let isInsideTrack = false;
+      
+      trackElements.forEach(element => {
+        if (element.contains(e.target as Node)) {
+          isInsideTrack = true;
+        }
+      });
+      
+      if (!isInsideTrack) {
+        setSelectedMember(null);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // 사용자 계정 정보 변경 감지 후 채팅 메시지 업데이트
   useEffect(() => {
@@ -571,6 +597,49 @@ export default function TeamProgressPage() {
     return Math.round(totalProgress / team.members.length)
   }
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>, teamId: string) => {
+    if (!trackRefs.current[teamId]) return;
+    
+    setIsDragging(true);
+    setStartX(e.pageX - trackRefs.current[teamId]!.offsetLeft);
+    setScrollLeft(trackRefs.current[teamId]!.scrollLeft);
+    
+    // 드래그 중 커서 스타일 변경
+    document.body.style.cursor = 'grabbing';
+  };
+  
+  // 트랙 드래그 중 핸들러
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>, teamId: string) => {
+    if (!isDragging || !trackRefs.current[teamId]) return;
+    
+    const x = e.pageX - trackRefs.current[teamId]!.offsetLeft;
+    const walk = (x - startX) * 2; // 드래그 감도 조정
+    trackRefs.current[teamId]!.scrollLeft = scrollLeft - walk;
+    
+    e.preventDefault();
+  };
+  
+  // 트랙 드래그 종료 핸들러
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    document.body.style.cursor = 'default';
+  };
+  
+  // 트랙 마우스 이탈 핸들러
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+    document.body.style.cursor = 'default';
+  };
+  
+  // 레이싱 트랙 위치 계산 함수 수정
+  const calculateRacePosition = (progress: number) => {
+    return progress * 2; // 원래 계산 방식 유지
+  }
+
+  const setTrackRef = (element: HTMLDivElement | null, teamId: string) => {
+    trackRefs.current[teamId] = element;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -584,56 +653,56 @@ export default function TeamProgressPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="border-b bg-white dark:bg-gray-800 p-4 shadow-sm">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-              YOUTH1 READING CREW
-            </h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {loggedInUser?.role === "admin" && (
-              <AdminPanel
-                teams={teamsState}
-                onUpdateTeams={setTeamsState}
-                isAdmin={loggedInUser?.role === "admin"}
-                chatLogs={[...chatLogs, ...chatMessages]}
-              />
-            )}
-            {loggedInUser ? (
-              <ProfileDialog
-                user={loggedInUser}
-                teams={allTeams}
-                onUpdateProfile={handleUpdateProfile}
-                onLogout={handleLogout}
-              />
-            ) : (
-              <LoginDialog onLogin={handleLogin} teams={allTeams} />
-            )}
-          </div>
+      <header className="border-b bg-white dark:bg-gray-800 p-3 md:p-4 shadow-sm">
+      <div className="container mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-2 md:gap-3">
+          <BookOpen className="h-7 w-7 md:h-9 md:w-9 text-primary" />
+          <h1 className="text-l md:text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent truncate">
+            YOUTH1 <br></br>READING CREW
+          </h1>
         </div>
-      </header>
 
-      <main className="flex flex-1 flex-col md:flex-row container mx-auto my-6 gap-6">
+        <div className="flex items-center gap-2 md:gap-3">
+          <ThemeToggle />
+          {loggedInUser?.role === "admin" && (
+            <AdminPanel
+              teams={teamsState}
+              onUpdateTeams={setTeamsState}
+              isAdmin={loggedInUser?.role === "admin"}
+              chatLogs={[...chatLogs, ...chatMessages]}
+            />
+          )}
+          {loggedInUser ? (
+            <ProfileDialog
+              user={loggedInUser}
+              teams={allTeams}
+              onUpdateProfile={handleUpdateProfile}
+              onLogout={handleLogout}
+            />
+          ) : (
+            <LoginDialog onLogin={handleLogin} teams={allTeams} />
+          )}
+        </div>
+      </div>
+    </header>
+
+    <main className="flex flex-1 flex-col md:flex-row container mx-auto my-3 md:my-6 gap-4 md:gap-6 px-2 md:px-4">
         {/* Left side - Team Progress */}
         <div className="w-full md:w-2/3 flex flex-col gap-6">
           <Card className="p-6 shadow-md border-0">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-10 rounded-full" style={{ backgroundColor: currentTeam?.color || "#3B82F6" }} />
+          <div className="flex items-center justify-between mb-4 md:mb-6 flex-wrap gap-2">
+              <div className="flex items-center gap-2 md:gap-3">
+                <div className="w-2 md:w-3 h-8 md:h-10 rounded-full" style={{ backgroundColor: currentTeam?.color || "#3B82F6" }} />
                 <div>
-                  <h2 className="text-2xl font-bold">{currentTeam?.name || "팀"}</h2>
-                  <p className="text-muted-foreground">
+                  <h2 className="text-xl md:text-2xl font-bold">{currentTeam?.name || "팀"}</h2>
+                  <p className="text-xs md:text-sm text-muted-foreground">
                     팀원 {currentTeam?.members.length || 0}명 · 평균 진행률{" "}
                     {currentTeam ? calculateTeamProgress(currentTeam) : 0}%
                   </p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Badge variant="outline" className="px-3 py-1">
+                <Badge variant="outline" className="px-2 md:px-3 py-1 text-xs md:text-sm">
                   <Trophy className="h-3 w-3 mr-1" />
                   {teamsState
                     .sort((a, b) => calculateTeamProgress(b) - calculateTeamProgress(a))
@@ -641,7 +710,7 @@ export default function TeamProgressPage() {
                   위
                 </Badge>
                 <Badge
-                  className="px-3 py-1"
+                  className="px-2 md:px-3 py-1 text-xs md:text-sm"
                   style={{ backgroundColor: currentTeam?.color || "#3B82F6", color: "white" }}
                 >
                   {currentTeam ? calculateTeamProgress(currentTeam) : 0}% 완료
@@ -654,25 +723,25 @@ export default function TeamProgressPage() {
               className="w-full"
               onValueChange={(value) => setActiveView(value as "track" | "members")}
             >
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="track" className="flex items-center gap-2">
-                  <Car className="h-4 w-4" />
+              <TabsList className="grid w-full grid-cols-2 mb-4 md:mb-6">
+                <TabsTrigger value="track" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                  <Car className="h-3 w-3 md:h-4 md:w-4" />
                   레이싱 트랙
                 </TabsTrigger>
-                <TabsTrigger value="members" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
+                <TabsTrigger value="members" className="flex items-center gap-1 md:gap-2 text-xs md:text-sm">
+                  <Users className="h-3 w-3 md:h-4 md:w-4" />
                   팀원 현황
                 </TabsTrigger>
               </TabsList>
             </Tabs>
 
-            <div className="flex space-x-1 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex space-x-1 mb-3 md:mb-4 overflow-x-auto pb-2 scrollbar-hide">
               {teamsState.map((team) => (
                 <button
                   key={team.id}
                   onClick={() => setActiveTeam(team.id)}
                   className={`
-                    px-4 py-2 rounded-lg transition-all duration-200 flex-shrink-0
+                    px-2 md:px-4 py-1 md:py-2 rounded-lg transition-all duration-200 flex-shrink-0 text-xs md:text-sm
                     ${
                       activeTeam === team.id
                         ? "bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700"
@@ -680,8 +749,8 @@ export default function TeamProgressPage() {
                     }
                   `}
                 >
-                  <span className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
+                  <span className="flex items-center gap-1 md:gap-2">
+                    <div className="w-1.5 md:w-2 h-1.5 md:h-2 rounded-full" style={{ backgroundColor: team.color }} />
                     {team.name}
                   </span>
                 </button>
@@ -692,92 +761,72 @@ export default function TeamProgressPage() {
               <div key={team.id} className={team.id === activeTeam ? "block" : "hidden"}>
                 {activeView === "track" && (
                   <div
-                    className="relative w-full mb-8 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700"
-                    style={{
-                      height: `${Math.max(250, team.members.length * 50)}px`,
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gray-800 rounded-lg">
+                  ref={(el) => setTrackRef(el, team.id)}
+                  className="relative w-full mb-8 rounded-xl border border-gray-200 dark:border-gray-700 cursor-grab"
+                  style={{
+                    height: `${Math.max(450, team.members.length * 80)}px`,  // 레인 길이 
+                    overflowX: "auto",
+                    scrollbarWidth: "none", // Firefox에서 스크롤바 숨기기
+                    msOverflowStyle: "none", // IE에서 스크롤바 숨기기
+                  }}
+                  data-track-area="true"
+                  onMouseDown={(e) => handleMouseDown(e, team.id)}
+                  onMouseMove={(e) => handleMouseMove(e, team.id)}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  {/* WebKit 브라우저(Chrome, Safari 등)에서 스크롤바 숨기기 위한 스타일 */}
+                  <style jsx>{`
+                    div::-webkit-scrollbar {
+                      display: none;
+                    }
+                  `}</style>              
+                    <div className="absolute inset-0 bg-gray-800 rounded-lg" style={{ width: "200%" }}>
                       <div className="absolute inset-0 flex flex-col">
                         {Array.from({ length: 6 }).map((_, i) => (
                           <div key={i} className="flex-1 border-b border-white/30" />
                         ))}
                       </div>
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-white text-opacity-10 text-center text-7xl font-bold tracking-wider">
-                          YOUTH1
-                          <br />
-                          READING CREW
-                        </div>
-                      </div>
-                      {Array.from({ length: 11 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="absolute top-0 h-full border-r border-white/20 flex items-center justify-center"
-                          style={{ left: `${i * 10}%` }}
-                        >
-                          <span className="text-white/50 text-xs">{i * 10}%</span>
-                        </div>
-                      ))}
-                      <div className="absolute top-0 left-0 h-full w-[10px] bg-white flex items-center justify-center z-10">
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col justify-center items-center">
-                          <Flag className="h-6 w-6 text-white" />
-                        </div>
-                      </div>
+                      
+                      {/* 시작 플래그 */}
+                      <div className="absolute top-0 left-0 h-full w-[10px] bg-white flex items-center justify-center z-10"></div>
+                      
+                      {/* 중간 선 */}
                       <div className="absolute top-0 left-1/2 h-full w-[10px] bg-yellow-500 flex items-center justify-center z-10 transform -translate-x-1/2">
                         <div className="absolute inset-0 bg-black bg-opacity-50"></div>
                       </div>
-                      <div className="absolute top-0 right-0 h-full w-[10px] bg-white flex items-center justify-center z-10">
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col justify-center items-center">
-                          <Flag className="h-6 w-6 text-white" />
-                        </div>
-                      </div>
+                      
+                      {/* 종료 플래그 */}
+                      <div className="absolute top-0 right-0 h-full w-[10px] bg-white flex items-center justify-center z-10" style={{ right: "0" }}></div>
+                      
+                      {/* 시작 체크무늬 */}
                       <div className="absolute top-0 left-0 h-full w-[10px] flex flex-col z-20">
                         {Array.from({ length: 10 }).map((_, i) => (
                           <div key={i} className={`flex-1 ${i % 2 === 0 ? "bg-white" : "bg-black"}`} />
                         ))}
                       </div>
-                      <div className="absolute top-0 right-0 h-full w-[10px] flex flex-col z-20">
+                      
+                      {/* 종료 체크무늬 */}
+                      <div className="absolute top-0 right-0 h-full w-[10px] flex flex-col z-20" style={{ right: "0" }}>
                         {Array.from({ length: 10 }).map((_, i) => (
                           <div key={i} className={`flex-1 ${i % 2 === 0 ? "bg-white" : "bg-black"}`} />
                         ))}
                       </div>
                     </div>
 
-                    <div
-                      className="absolute transform -translate-y-1/2 transition-all duration-1000 ease-in-out z-30"
-                      style={{
-                        left: `5%`,
-                        top: `12.5%`,
-                      }}
-                    >
-                      <Avatar className="h-10 w-10 border-2 border-white shadow-lg opacity-50">
-                        <AvatarFallback className="bg-gray-300">?</AvatarFallback>
-                      </Avatar>
-                    </div>
-                    <div
-                      className="absolute transform -translate-y-1/2 transition-all duration-1000 ease-in-out z-30"
-                      style={{
-                        left: `5%`,
-                        top: `87.5%`,
-                      }}
-                    >
-                      <Avatar className="h-10 w-10 border-2 border-white shadow-lg opacity-50">
-                        <AvatarFallback className="bg-gray-300">?</AvatarFallback>
-                      </Avatar>
-                    </div>
-
+                    {/* 팀원 아바타 */}
                     {team.members.map((member, index) => {
-                      const position = calculateRacePosition(member.progress)
-                      const today = new Date()
+                      const position = calculateRacePosition(member.progress);
+                      const today = new Date();
                       const todayIndex = weekdayDates.findIndex(
                         (date) =>
                           date.getDate() === today.getDate() &&
                           date.getMonth() === today.getMonth() &&
-                          date.getFullYear() === today.getFullYear(),
-                      )
-                      const checkedToday = todayIndex !== -1 && member.dailyChecks[todayIndex]
-                      const lanePosition = ((index % 4) + 1) * 12.5 + 12.5
+                          date.getFullYear() === today.getFullYear()
+                      );
+                      const checkedToday = todayIndex !== -1 && member.dailyChecks[todayIndex];
+                      const lanePosition = ((index % 4) + 1) * 12.5 + 12.5;
+                      const isSelected = selectedMember === member.id;
 
                       return (
                         <div
@@ -789,38 +838,44 @@ export default function TeamProgressPage() {
                           }}
                         >
                           <div className="relative">
-                            <Avatar className="h-10 w-10 border-2 border-white shadow-lg">
-                              <AvatarImage src={member.avatar} alt={member.name} />
-                              <AvatarFallback style={{ backgroundColor: team.color }}>
-                                {member.name.substring(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                            {checkedToday && (
-                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border border-white flex items-center justify-center z-20">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="h-2 w-2 text-white"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-gray-800 p-1.5 rounded-md shadow-md text-xs whitespace-nowrap z-40">
-                            <div className="font-bold">{member.name}</div>
-                            <div className="text-center">{member.progress}%</div>
-                          </div>
+                          <Avatar 
+                            className={`h-12 w-12 md:h-16 md:w-16 border-2 border-white shadow-lg ${isSelected ? 'ring-4 ring-primary ring-offset-2' : ''} cursor-pointer transition-all duration-300`} 
+                            onClick={() => setSelectedMember(isSelected ? null : member.id)}
+                          >
+                            <AvatarImage src={member.avatar} alt={member.name} />
+                            <AvatarFallback style={{ backgroundColor: team.color }}>
+                              {member.name.substring(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          {checkedToday && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-green-500 rounded-full border border-white flex items-center justify-center z-20">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-2 w-2 md:h-3 md:w-3 text-white"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                          )}
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
+                        {/* 선택된 경우에만 이름 표시 (크기 증가) */}
+                        {isSelected && (
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 md:mt-3 bg-white dark:bg-gray-800 p-1.5 md:p-2.5 rounded-md shadow-lg text-xs md:text-sm whitespace-nowrap z-40 min-w-[90px] md:min-w-[120px] text-center border border-gray-200 dark:border-gray-700">
+                            <div className="font-bold text-sm md:text-base">{member.name}</div>
+                            <div className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">{member.progress}%</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
                 {activeView === "members" && (
                   <div className="space-y-4">
@@ -829,9 +884,6 @@ export default function TeamProgressPage() {
                         <User className="mx-auto h-12 w-12 text-muted-foreground/50" />
                         <h3 className="mt-2 text-lg font-semibold">팀원이 없습니다</h3>
                         <p className="text-sm text-muted-foreground">새로운 팀원을 추가해보세요!</p>
-                        <Button variant="outline" className="mt-4">
-                          팀원 추가하기
-                        </Button>
                       </div>
                     )}
 
@@ -851,20 +903,20 @@ export default function TeamProgressPage() {
                       const checkedToday = todayIndex !== -1 && member.dailyChecks[todayIndex]
 
                       return (
-                        <Card key={member.id} className="p-6 shadow-sm border-0 hover:shadow-md transition-shadow">
-                          <div className="flex items-center gap-4 mb-4">
+                        <Card key={member.id} className="p-3 md:p-6 shadow-sm border-0 hover:shadow-md transition-shadow">
+                          <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
                             <div className="relative">
                               <Avatar
-                                className={`h-14 w-14 ${checkedToday ? "ring-2 ring-green-500 ring-offset-2" : ""}`}
+                                className={`h-14 w-14 md:h-14 md:w-14 ${checkedToday ? "ring-2 ring-green-500 ring-offset-2" : ""}`}
                               >
                                 <AvatarImage src={member.avatar} alt={member.name} />
-                                <AvatarFallback className="text-lg">{member.name.substring(0, 2)}</AvatarFallback>
+                                <AvatarFallback className="text-base md:text-lg">{member.name.substring(0, 2)}</AvatarFallback>
                               </Avatar>
                               {checkedToday && (
-                                <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center z-20">
+                                <div className="absolute -top-1 -right-1 md:-top-2 md:-right-2 w-4 h-4 md:w-6 md:h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center z-20">
                                   <svg
                                     xmlns="http://www.w3.org/2000/svg"
-                                    className="h-3 w-3 text-white"
+                                    className="h-2 w-2 md:h-3 md:w-3 text-white"
                                     viewBox="0 0 20 20"
                                     fill="currentColor"
                                   >
@@ -878,8 +930,8 @@ export default function TeamProgressPage() {
                               )}
                             </div>
                             <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="text-xl font-bold">{member.name}</h3>
+                              <div className="flex items-center gap-1 md:gap-2 mb-0.5 md:mb-1 flex-wrap">
+                                <h3 className="text-lg md:text-xl font-bold">{member.name}</h3>
                                 {member.role && (
                                   <Badge
                                     variant={
@@ -889,7 +941,7 @@ export default function TeamProgressPage() {
                                           ? "secondary"
                                           : "outline"
                                     }
-                                    className="text-xs"
+                                    className="text-[10px] md:text-xs"
                                   >
                                     {member.role === "admin" ? "관리자" : member.role === "leader" ? "팀장" : "일반"}
                                   </Badge>
@@ -897,30 +949,30 @@ export default function TeamProgressPage() {
                               </div>
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm text-muted-foreground">진행률</span>
-                                  <span className="text-sm font-medium">{member.progress}%</span>
+                                  <span className="text-xs md:text-sm text-muted-foreground">진행률</span>
+                                  <span className="text-xs md:text-sm font-medium">{member.progress}%</span>
                                 </div>
-                                <Progress value={member.progress} className="h-2" />
+                                <Progress value={member.progress} className="h-1.5 md:h-2" />
                               </div>
                             </div>
                           </div>
-
-                          {showCalendar && (
-                            <div className="mt-4">
-                              <ProgressCalendar
-                                dailyChecks={member.dailyChecks}
-                                weekdayDates={weekdayDates}
-                                onCheckChange={(index) => handleCheckboxChange(team.id, member.id, index)}
-                                canModify={
-                                  !!loggedInUser &&
-                                  (loggedInUser.role === "admin" ||
-                                    (loggedInUser.role === "leader" && loggedInUser.teamId === team.id) ||
-                                    loggedInUser.id === member.id)
-                                }
-                                isAdmin={loggedInUser?.role === "admin"}
-                              />
-                            </div>
-                          )}
+                          {/* 여기에 ProgressCalendar 추가 */}
+                        {showCalendar && (
+                          <div className="mt-3 md:mt-4">
+                            <ProgressCalendar
+                              dailyChecks={member.dailyChecks}
+                              weekdayDates={weekdayDates}
+                              onCheckChange={(index) => handleCheckboxChange(team.id, member.id, index)}
+                              canModify={
+                                !!loggedInUser &&
+                                (loggedInUser.role === "admin" ||
+                                  (loggedInUser.role === "leader" && loggedInUser.teamId === team.id) ||
+                                  loggedInUser.id === member.id)
+                              }
+                              isAdmin={loggedInUser?.role === "admin"}
+                            />
+                          </div>
+                        )}
                         </Card>
                       )
                     })}
@@ -932,89 +984,91 @@ export default function TeamProgressPage() {
         </div>
 
         {/* Right side - Chat */}
-        <div className="w-full md:w-1/3 flex flex-col h-[calc(100vh-10rem)] md:block hidden">
-          <Card className="p-6 shadow-md border-0 flex flex-col h-full">
-            <div className="flex items-center gap-2 mb-4 pb-4 border-b">
-              <MessageSquare className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">CREW CHAT</h2>
-            </div>
+        <div className="w-full md:w-1/3 flex flex-col md:block hidden">
+          <div className="sticky top-[calc(50vh-250px)]"> {/* 스크롤에 따라 화면 중앙에 유지되도록 sticky 포지션 적용 */}
+            <Card className="p-6 shadow-md border-0 flex flex-col h-[800px]"> {/* 고정된 높이 설정 */}
+              <div className="flex items-center gap-2 mb-4 pb-4 border-b">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold">CREW CHAT</h2>
+              </div>
 
-            <Alert className="mb-4 bg-primary/10 border-primary/20 text-primary">
-              <Megaphone className="h-4 w-4" />
-              <AlertDescription className="text-xs">채팅은 수정/삭제 불가합니다. 모두 바른말 고운말:)<br></br>매일 자정에 채팅은 초기화됩니다.</AlertDescription>
-            </Alert>
+              <Alert className="mb-4 bg-primary/10 border-primary/20 text-primary">
+                <Megaphone className="h-4 w-4" />
+                <AlertDescription className="text-xs">채팅은 수정/삭제 불가합니다. 모두 바른말 고운말:)<br></br>매일 자정에 채팅은 초기화됩니다.</AlertDescription>
+              </Alert>
 
-            <ScrollArea className="flex-1 pr-4 h-[calc(100vh-20rem)]" ref={scrollAreaRef}>
-              <div className="space-y-4">
-                {chatMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-2 ${message.userId === loggedInUser?.id ? "justify-end" : "justify-start"}`}
-                  >
-                    {message.userId !== loggedInUser?.id && (
-                      <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                        <AvatarImage src={message.userAvatar} alt={message.userName} />
-                        <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
-                      </Avatar>
-                    )}
+              <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
+                <div className="space-y-4">
+                  {chatMessages.map((message) => (
                     <div
-                      className={`max-w-[70%] ${
-                        message.userId === loggedInUser?.id
-                          ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none"
-                          : "bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-tl-none"
-                      } p-3`}
+                      key={message.id}
+                      className={`flex gap-1.5 md:gap-2 ${message.userId === loggedInUser?.id ? "justify-end" : "justify-start"}`}
                     >
                       {message.userId !== loggedInUser?.id && (
-                        <p className="text-xs font-medium mb-1">{message.userName}</p>
+                        <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-white shadow-sm">
+                          <AvatarImage src={message.userAvatar} alt={message.userName} />
+                          <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
                       )}
-                      <p className="break-words">{message.message}</p>
-                      <p className="text-xs opacity-70 text-right mt-1">{formatTime(message.timestamp)}</p>
+                      <div
+                        className={`max-w-[75%] ${
+                          message.userId === loggedInUser?.id
+                            ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none"
+                            : "bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-tl-none"
+                        } p-2 md:p-3 text-xs md:text-sm`}
+                      >
+                        {message.userId !== loggedInUser?.id && (
+                          <p className="text-[10px] md:text-xs font-medium mb-0.5 md:mb-1">{message.userName}</p>
+                        )}
+                        <p className="break-words">{message.message}</p>
+                        <p className="text-[10px] md:text-xs opacity-70 text-right mt-0.5 md:mt-1">{formatTime(message.timestamp)}</p>
+                      </div>
+                      {message.userId === loggedInUser?.id && (
+                        <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-white shadow-sm">
+                          <AvatarImage src={message.userAvatar} alt={message.userName} />
+                          <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                      )}
                     </div>
-                    {message.userId === loggedInUser?.id && (
-                      <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                        <AvatarImage src={message.userAvatar} alt={message.userName} />
-                        <AvatarFallback>{message.userName.substring(0, 2)}</AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+                  ))}
+                </div>
+              </ScrollArea>
 
-            <div className="pt-4 mt-4 border-t">
-              {loggedInUser ? (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="메시지를 입력하세요..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="rounded-full bg-gray-100 dark:bg-gray-800 border-0 focus-visible:ring-primary"
-                  />
-                  <Button 
-                    size="icon" 
-                    className="rounded-full" 
-                    onClick={sendMessage}
-                    disabled={!newMessage.trim() || sendingRef.current}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-2">채팅을 이용하려면 로그인이 필요합니다.</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => document.querySelector<HTMLButtonElement>('[aria-label="로그인"]')?.click()}
-                  >
-                    로그인하기
-                  </Button>
-                </div>
-              )}
-            </div>
-          </Card>
+              <div className="pt-4 mt-4 border-t">
+                {loggedInUser ? (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="메시지를 입력하세요..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="rounded-full bg-gray-100 dark:bg-gray-800 border-0 focus-visible:ring-primary"
+                    />
+                    <Button 
+                      size="icon" 
+                      className="rounded-full" 
+                      onClick={sendMessage}
+                      disabled={!newMessage.trim() || sendingRef.current}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-2">채팅을 이용하려면 로그인이 필요합니다.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => document.querySelector<HTMLButtonElement>('[aria-label="로그인"]')?.click()}
+                    >
+                      로그인하기
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
         </div>
 
         <div className="md:hidden block">
@@ -1136,7 +1190,7 @@ export default function TeamProgressPage() {
 
       <footer className="bg-white dark:bg-gray-800 border-t py-4 mt-auto">
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>© 2025 YOUTH1 READING CREW. All rights reserved.</p>
+          <p>© 2025 MDC YOUTH1. All rights reserved.</p>
         </div>
       </footer>
     </div>

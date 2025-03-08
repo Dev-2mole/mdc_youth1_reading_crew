@@ -48,8 +48,6 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
       return
     }
 
-    console.log("로그인 요청:", { id: loginId, password: loginPassword })
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -65,8 +63,6 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
       if (!res.ok) {
         throw new Error(data.error || "로그인 실패")
       }
-
-      console.log("로그인 성공:", data)
 
       // password 필드를 제거한 후 상태 업데이트
       const { password, ...userWithoutPassword } = data
@@ -88,15 +84,6 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
       setRegisterError("모든 필드를 입력해주세요.")
       return
     }
-
-    console.log("회원가입 요청:", {
-      id: registerId,
-      password: registerPassword,
-      name: registerName,
-      cohort: registerCohort,
-      teamId: registerTeam,
-    })
-
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -116,7 +103,6 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
         throw new Error(data.error || "회원가입 실패")
       }
 
-      console.log("회원가입 성공:", data)
 
       // 회원가입 후 자동 로그인
       const { password, ...userWithoutPassword } = data

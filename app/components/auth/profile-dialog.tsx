@@ -62,11 +62,6 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // 파일 검증
-      if (file.size > 20 * 1024 * 1024) {
-        alert("이미지 크기는 20MB 이하여야 합니다.")
-        return
-      }
       if (!file.type.startsWith("image/")) {
         alert("이미지 파일만 업로드 가능합니다.")
         return
@@ -132,14 +127,14 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Avatar className="h-8 w-8">
+        <Button variant="ghost" size="icon" className="rounded-full p-1">
+          <Avatar className="h-10 w-10 border-2 border-primary/30">
             <AvatarImage src={user.avatar} alt={user.name} />
             <AvatarFallback>{user.name.substring(0, 2)}</AvatarFallback>
           </Avatar>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>내 프로필</DialogTitle>
           <DialogDescription>
@@ -214,7 +209,7 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
                 <SelectTrigger id="profile-cohort">
                   <SelectValue placeholder="기수를 선택하세요" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="max-h-60">
                   {Array.from({ length: 8 }, (_, i) => i + 41).map((cohortNum) => (
                     <SelectItem key={cohortNum} value={cohortNum.toString()}>
                       {cohortNum}기
@@ -234,7 +229,7 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
                 <SelectTrigger id="profile-team">
                   <SelectValue placeholder="팀을 선택하세요" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="max-h-60">
                   {teams.map((team) => (
                     <SelectItem key={team.id} value={team.id}>
                       {team.name}
@@ -252,7 +247,7 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
             )}
           </div>
 
-          <div className="flex justify-between pt-4">
+          <div className="flex justify-between pt-4 pb-2">
             {isEditing ? (
               <>
                 <Button variant="outline" onClick={() => setIsEditing(false)}>

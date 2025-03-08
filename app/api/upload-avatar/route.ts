@@ -35,8 +35,7 @@ export async function POST(req: NextRequest) {
     // formidable 설정
     const form = new IncomingForm({
       uploadDir,
-      keepExtensions: true,
-      maxFileSize: 20 * 1024 * 1024, // 20MB 제한
+      keepExtensions: true
     });
 
     // `form.parse`를 Promise로 변환
