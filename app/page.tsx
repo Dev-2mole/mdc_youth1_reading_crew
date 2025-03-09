@@ -71,12 +71,9 @@ export default function TeamProgressPage() {
   const [chatLogs, setChatLogs] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null)
-  const [newMemberName, setNewMemberName] = useState("")
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [activeView, setActiveView] = useState<"track" | "members">("track")
   const [loggedInUser, setLoggedInUser] = useState<UserData | null>(null)
   const [weekdayDates] = useState(generateWeekdayDates())
-  const [lastResetDate, setLastResetDate] = useState<string>(new Date().toDateString())
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const trackRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -544,49 +541,14 @@ export default function TeamProgressPage() {
     chatMessagesRef.current = chatMessages;
   }, [chatMessages]);
 
-  useEffect(() => {
-    const scheduleMidnightReset = () => {
-      const now = new Date();
-      const midnight = new Date();
-      midnight.setHours(0, 0, 0, 0);
-      // 내일 자정까지의 ms 계산
-      const nextMidnight = midnight.getTime() + 86400000;
-      const timeUntilMidnight = nextMidnight - now.getTime();
-
-      const timerId = setTimeout(async () => {
-        try {
-          const messagesToLog = chatMessagesRef.current;
-          // 채팅 로그 API에 메시지 저장
-          for (const message of messagesToLog) {
-            await fetch("/api/chat/logs", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                userId: message.userId,
-                message: message.message,
-                timestamp: message.timestamp,
-              }),
-            });
-          }
-          // 채팅 로그와 화면 초기화
-          setChatLogs((prevLogs) => [...prevLogs, ...messagesToLog]);
-          setChatMessages([]);
-          setLastResetDate(new Date().toDateString());
-        } catch (error) {
-          console.error("채팅 로그 저장 실패:", error);
-        } finally {
-          // 다음 자정 타이머 예약
-          scheduleMidnightReset();
-        }
-      }, timeUntilMidnight);
-
-      return timerId;
-    };
-
-    const timerId = scheduleMidnightReset();
-    return () => clearTimeout(timerId);
-  }, []);
-
+  const isMessageFromToday = (timestamp: Date) => {
+    const today = new Date()
+    return (
+      timestamp.getDate() === today.getDate() &&
+      timestamp.getMonth() === today.getMonth() &&
+      timestamp.getFullYear() === today.getFullYear()
+    )
+  }
 
   const currentTeam =
     teamsState.find((team) => team.id === activeTeam) || (teamsState.length > 0 ? teamsState[0] : null)
@@ -999,12 +961,12 @@ export default function TeamProgressPage() {
 
               <Alert className="mb-4 bg-primary/10 border-primary/20 text-primary">
                 <Megaphone className="h-4 w-4" />
-                <AlertDescription className="text-xs">채팅은 수정/삭제 불가합니다. 모두 바른말 고운말:)<br></br>매일 자정에 채팅은 초기화됩니다.</AlertDescription>
+                <AlertDescription className="text-xs">채팅은 수정/삭제 불가합니다. 모두 바른말 고운말:)<br></br>오늘 날짜의 채팅만 표시됩니다.</AlertDescription>
               </Alert>
 
               <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
                 <div className="space-y-4">
-                  {chatMessages.map((message) => (
+                  {chatMessages.filter(message => isMessageFromToday(message.timestamp)).map((message) => (
                     <div
                       key={message.id}
                       className={`flex gap-1.5 md:gap-2 ${message.userId === loggedInUser?.id ? "justify-end" : "justify-start"}`}
@@ -1112,14 +1074,13 @@ export default function TeamProgressPage() {
               </div>
 
               <div className="flex-1 flex flex-col overflow-hidden">
-                <Alert className="rounded-none border-b bg-muted/50">
+              <Alert className="rounded-none border-b bg-muted/50">
                   <Megaphone className="h-4 w-4 text-primary" />
-                  <AlertDescription className="text-xs">채팅은 수정/삭제 불가합니다. 모두 바른말 고운말:)<br></br>매일 자정에 채팅은 초기화됩니다.</AlertDescription>
+                  <AlertDescription className="text-xs">채팅은 수정/삭제 불가합니다. 모두 바른말 고운말:)<br></br>오늘 날짜의 채팅만 표시됩니다.</AlertDescription>
                 </Alert>
-
                 <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                   <div className="space-y-4">
-                    {chatMessages.map((message) => (
+                    {chatMessages.filter(message => isMessageFromToday(message.timestamp)).map((message) => (
                       <div
                         key={message.id}
                         className={`flex gap-2 ${message.userId === loggedInUser?.id ? "justify-end" : "justify-start"}`}
