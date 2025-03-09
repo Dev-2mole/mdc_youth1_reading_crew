@@ -788,11 +788,10 @@ export default function TeamProgressPage() {
                         date.getFullYear() === today.getFullYear()
                     );
                     const checkedToday = todayIndex !== -1 && member.dailyChecks[todayIndex];
-                    // 모바일과 PC에서 일관된 간격을 유지하기 위해 계산 방식 수정
-                    // 트랙 높이를 5개의 레인으로 나누고, 각 레인의 중앙에 위치하도록 조정
-                    const totalLanes = 5;
-                    const laneIndex = index % totalLanes;
-                    const lanePosition = (laneIndex + 0.5) * (100 / totalLanes); // 각 레인의 중앙에 위치
+                    
+                    // 모든 팀원이 각자 고유한 레인을 가지도록 수정
+                    const totalMembers = team.members.length;
+                    const lanePosition = (index + 0.5) * (100 / totalMembers); // 각 팀원이 고유한 레인에 위치하도록 변경
                     const isSelected = selectedMember === member.id;
 
                     return (
@@ -834,8 +833,7 @@ export default function TeamProgressPage() {
                       {/* 선택된 경우에만 이름 표시 (크기 증가) */}
                       {isSelected && (
                         <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 md:mt-3 bg-white dark:bg-gray-800 p-1.5 md:p-2.5 rounded-md shadow-lg text-xs md:text-sm whitespace-nowrap z-40 min-w-[90px] md:min-w-[120px] text-center border border-gray-200 dark:border-gray-700">
-                          <div className="font-bold text-sm md:text-base">{member.name}</div>
-                          <div className="text-xs md:text-sm text-muted-foreground mt-0.5 md:mt-1">{member.progress}%</div>
+                            <div className="font-bold text-sm md:text-base">{member.name}</div>
                         </div>
                       )}
                     </div>
