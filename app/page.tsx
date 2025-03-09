@@ -953,7 +953,7 @@ export default function TeamProgressPage() {
         {/* Right side - Chat */}
         <div className="w-full md:w-1/3 flex flex-col md:block hidden">
           <div className="sticky top-[calc(50vh-250px)]"> {/* 스크롤에 따라 화면 중앙에 유지되도록 sticky 포지션 적용 */}
-            <Card className="p-6 shadow-md border-0 flex flex-col h-[800px]"> {/* 고정된 높이 설정 */}
+            <Card className="p-6 shadow-md border-0 flex flex-col h-[700px]"> {/* 고정된 높이 설정 */}
               <div className="flex items-center gap-2 mb-4 pb-4 border-b">
                 <MessageSquare className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-bold">CREW CHAT</h2>
