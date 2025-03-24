@@ -124,7 +124,7 @@ export default function TeamProgressPage() {
               avatar: user.avatar || "/placeholder.svg?height=32&width=32",
               progress: 0, // 초기값, 나중에 업데이트됨
               goal: 100,
-              dailyChecks: Array(45).fill(false), // 초기값, 나중에 업데이트됨
+              dailyChecks: Array(weekdayDates.length).fill(false), // 초기값, 나중에 업데이트됨
               role: user.role,
             }
           })
@@ -200,43 +200,46 @@ export default function TeamProgressPage() {
     try {
       const response = await fetch(`/api/progress?userId=${userId}`)
       const progressData = await response.json()
-
-      // 진행 상황 데이터를 dailyChecks 배열로 변환
-      const dailyChecks = Array(45).fill(false)
+  
+      // 초기화
+      const dailyChecks = Array(weekdayDates.length).fill(false)
       let completedCount = 0
-
-      progressData.forEach((item: any, index: number) => {
-        if (index < 45) {
-          dailyChecks[index] = item.completed
+  
+      // 날짜 기준으로 일치하는 인덱스 찾아서 매핑
+      progressData.forEach((item: any) => {
+        const dateIndex = weekdayDates.findIndex(
+          (d) => new Date(d).toDateString() === new Date(item.date).toDateString()
+        )
+  
+        if (dateIndex !== -1) {
+          dailyChecks[dateIndex] = item.completed
           if (item.completed) completedCount++
         }
       })
-
-      // 진행률 계산
-      const progress = Math.round((completedCount / 45) * 100)
-
-      // 팀 상태 업데이트
+  
+      const progress = Math.round((completedCount / weekdayDates.length) * 100)
+  
+      // teamsState 업데이트
       setTeamsState((prevTeams) => {
-        return prevTeams.map((team) => {
-          return {
-            ...team,
-            members: team.members.map((member) => {
-              if (member.id === userId) {
-                return {
-                  ...member,
-                  progress,
-                  dailyChecks,
-                }
+        return prevTeams.map((team) => ({
+          ...team,
+          members: team.members.map((member) => {
+            if (member.id === userId) {
+              return {
+                ...member,
+                dailyChecks,
+                progress,
               }
-              return member
-            }),
-          }
-        })
+            }
+            return member
+          }),
+        }))
       })
     } catch (error) {
       console.error(`사용자 ${userId}의 진행 상황 가져오기 실패:`, error)
     }
   }
+  
 
   // 체크박스 변경 처리
   const handleCheckboxChange = async (teamId: string, userId: string, dayIndex: number) => {
@@ -348,7 +351,7 @@ export default function TeamProgressPage() {
           avatar: user.avatar || "/placeholder.svg?height=32&width=32",
           progress: 0,
           goal: 100,
-          dailyChecks: Array(45).fill(false),
+          dailyChecks: Array(weekdayDates.length).fill(false),
           role: user.role,
         })
       }
@@ -361,7 +364,7 @@ export default function TeamProgressPage() {
         avatar: user.avatar || "/placeholder.svg?height=32&width=32",
         progress: 0,
         goal: 100,
-        dailyChecks: Array(45).fill(false),
+        dailyChecks: Array(weekdayDates.length).fill(false),
         role: user.role,
       })
       // 첫 번째 표시 가능한 팀으로 설정

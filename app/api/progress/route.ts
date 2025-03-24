@@ -17,6 +17,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(progress)
   } catch (error) {
+    console.error("GET /api/progress error:", error)
     return NextResponse.json({ error: "Failed to fetch progress" }, { status: 500 })
   }
 }
@@ -26,11 +27,18 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { userId, date, completed } = body
 
-    // 이미 존재하는 레코드가 있는지 확인
+    if (!userId || !date || typeof completed !== "boolean") {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    const dateOnly = new Date(date)
+    dateOnly.setHours(0, 0, 0, 0) // Normalize to start of day
+
+    // 기존에 존재하는 레코드 확인
     const existingProgress = await prisma.progress.findFirst({
       where: {
         userId,
-        date: new Date(date),
+        date: dateOnly,
       },
     })
 
@@ -47,7 +55,7 @@ export async function POST(request: Request) {
       progress = await prisma.progress.create({
         data: {
           userId,
-          date: new Date(date),
+          date: dateOnly,
           completed,
         },
       })
@@ -55,7 +63,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(progress)
   } catch (error) {
+    console.error("POST /api/progress error:", error)
     return NextResponse.json({ error: "Failed to update progress" }, { status: 500 })
   }
 }
-
