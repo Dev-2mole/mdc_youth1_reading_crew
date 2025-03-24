@@ -201,25 +201,22 @@ export default function TeamProgressPage() {
       const response = await fetch(`/api/progress?userId=${userId}`)
       const progressData = await response.json()
   
-      // 초기화
       const dailyChecks = Array(weekdayDates.length).fill(false)
-      let completedCount = 0
+      const progressMap = new Map<string, boolean>()
   
-      // 날짜 기준으로 일치하는 인덱스 찾아서 매핑
       progressData.forEach((item: any) => {
-        const dateIndex = weekdayDates.findIndex(
-          (d) => new Date(d).toDateString() === new Date(item.date).toDateString()
-        )
-  
-        if (dateIndex !== -1) {
-          dailyChecks[dateIndex] = item.completed
-          if (item.completed) completedCount++
-        }
+        const dateKey = item.date.split("T")[0] // "2025-03-10"
+        progressMap.set(dateKey, item.completed)
       })
   
+      weekdayDates.forEach((date, index) => {
+        const dateKey = date.toISOString().split("T")[0]
+        dailyChecks[index] = progressMap.get(dateKey) ?? false
+      })
+  
+      const completedCount = dailyChecks.filter(Boolean).length
       const progress = Math.round((completedCount / weekdayDates.length) * 100)
   
-      // teamsState 업데이트
       setTeamsState((prevTeams) => {
         return prevTeams.map((team) => ({
           ...team,
@@ -235,10 +232,11 @@ export default function TeamProgressPage() {
           }),
         }))
       })
-    } catch (error) {
-      console.error(`사용자 ${userId}의 진행 상황 가져오기 실패:`, error)
+    } catch (err) {
+      console.error("진행률 불러오기 실패:", err)
     }
   }
+  
   
 
   // 체크박스 변경 처리
