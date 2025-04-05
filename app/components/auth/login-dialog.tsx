@@ -1,6 +1,7 @@
+// app/components/auth/login-dialog.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -14,8 +15,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { LogIn } from "lucide-react"
-import { UserData } from "../../types"  // 상대경로를 이용해 import
+import { Checkbox } from "@/components/ui/checkbox"
+import { LogIn, AlertCircle } from "lucide-react"
+import { UserData } from "../../types"
+import { FindPasswordDialog } from "./find-password-dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface LoginDialogProps {
   onLogin: (user: UserData) => void | Promise<void>
@@ -29,6 +33,7 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
   // 로그인 상태
   const [loginId, setLoginId] = useState("")
   const [loginPassword, setLoginPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
   const [loginError, setLoginError] = useState("")
 
   // 회원가입 상태
@@ -38,6 +43,29 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
   const [registerCohort, setRegisterCohort] = useState("")
   const [registerTeam, setRegisterTeam] = useState("")
   const [registerError, setRegisterError] = useState("")
+
+  // 자동 로그인 확인
+  useEffect(() => {
+    const checkAutoLogin = async () => {
+      try {
+        const response = await fetch("/api/auth/auto-login", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const user = await response.json();
+          onLogin(user);
+        }
+      } catch (error) {
+        console.error("자동 로그인 확인 실패:", error);
+      }
+    };
+
+    checkAutoLogin();
+  }, [onLogin]);
 
   // 로그인 함수 (API 요청)
   const handleLogin = async () => {
@@ -49,12 +77,13 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
     }
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/auto-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: loginId,
           password: loginPassword,
+          rememberMe: rememberMe
         }),
       })
 
@@ -121,6 +150,7 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
     setLoginId("")
     setLoginPassword("")
     setLoginError("")
+    setRememberMe(false)
     setRegisterId("")
     setRegisterPassword("")
     setRegisterName("")
@@ -128,6 +158,13 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
     setRegisterTeam("")
     setRegisterError("")
     setActiveTab("login")
+  }
+
+  // 비밀번호 찾기 성공 처리
+  const handleResetSuccess = (id: string, password: string) => {
+    setLoginId(id);
+    setLoginPassword(password);
+    setActiveTab("login");
   }
 
   return (
@@ -151,72 +188,97 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
 
           {/* 로그인 폼 */}
           <TabsContent value="login">
-          <div className="space-y-2">
-            <div>
-              <Label>아이디</Label>
-              <Input value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="아이디" />
+            <div className="space-y-2">
+              {loginError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{loginError}</AlertDescription>
+                </Alert>
+              )}
+              <div>
+                <Label>아이디</Label>
+                <Input value={loginId} onChange={(e) => setLoginId(e.target.value)} placeholder="아이디" />
+              </div>
+              <div>
+                <Label>비밀번호</Label>
+                <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="비밀번호" />
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="remember-me" 
+                    checked={rememberMe} 
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  />
+                  <label 
+                    htmlFor="remember-me" 
+                    className="text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    자동 로그인
+                  </label>
+                </div>
+                <FindPasswordDialog onResetSuccess={handleResetSuccess} />
+              </div>
+              <Button className="mt-4 w-full" onClick={handleLogin}>로그인</Button>
             </div>
-            <div>
-              <Label>비밀번호</Label>
-              <Input type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="비밀번호" />
-            </div>
-            {loginError && <p className="text-sm text-red-500">{loginError}</p>}
-            <Button className="mt-4 w-full" onClick={handleLogin}>로그인</Button>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* 회원가입 폼 */}
-        <TabsContent value="register">
-          <div className="space-y-2">
-            <div>
-              <Label>아이디</Label>
-              <Input value={registerId} onChange={(e) => setRegisterId(e.target.value)} placeholder="아이디" />
+          {/* 회원가입 폼 */}
+          <TabsContent value="register">
+            <div className="space-y-2">
+              {registerError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{registerError}</AlertDescription>
+                </Alert>
+              )}
+              <div>
+                <Label>아이디</Label>
+                <Input value={registerId} onChange={(e) => setRegisterId(e.target.value)} placeholder="아이디" />
+              </div>
+              <div>
+                <Label>비밀번호</Label>
+                <Input type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="비밀번호" />
+              </div>
+              <div>
+                <Label>이름</Label>
+                <Input value={registerName} onChange={(e) => setRegisterName(e.target.value)} placeholder="이름" />
+              </div>
+              <div>
+                <Label htmlFor="register-cohort">기수</Label>
+                <Select value={registerCohort} onValueChange={setRegisterCohort}>
+                  <SelectTrigger id="register-cohort">
+                    <SelectValue placeholder="기수를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 8 }, (_, i) => i + 41).map((cohort) => (
+                      <SelectItem key={cohort} value={cohort.toString()}>
+                        {cohort}기
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>팀</Label>
+                <Select value={registerTeam} onValueChange={setRegisterTeam}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="팀 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button className="mt-4 w-full" onClick={handleRegister}>회원가입</Button>
             </div>
-            <div>
-              <Label>비밀번호</Label>
-              <Input type="password" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="비밀번호" />
-            </div>
-            <div>
-              <Label>이름</Label>
-              <Input value={registerName} onChange={(e) => setRegisterName(e.target.value)} placeholder="이름" />
-            </div>
-            <div>
-              <Label htmlFor="register-cohort">기수</Label>
-              <Select value={registerCohort} onValueChange={setRegisterCohort}>
-                <SelectTrigger id="register-cohort">
-                  <SelectValue placeholder="기수를 선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 8 }, (_, i) => i + 41).map((cohort) => (
-                    <SelectItem key={cohort} value={cohort.toString()}>
-                      {cohort}기
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>팀</Label>
-              <Select value={registerTeam} onValueChange={setRegisterTeam}>
-                <SelectTrigger>
-                  <SelectValue placeholder="팀 선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {registerError && <p className="text-sm text-red-500">{registerError}</p>}
-            <Button className="mt-4 w-full" onClick={handleRegister}>회원가입</Button>
-          </div>
-        </TabsContent>
+          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
   )
 }
-

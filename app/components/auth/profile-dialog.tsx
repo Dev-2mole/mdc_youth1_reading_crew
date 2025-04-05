@@ -1,3 +1,4 @@
+// app/components/auth/profile-dialog.tsx 수정
 "use client"
 
 import { useState, useRef } from "react"
@@ -16,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { User, Upload } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { UserData } from "../../types"  // 공통 타입을 상대경로로 import
+import { UserData } from "../../types"
+import { ChangePasswordDialog } from "./change-password-dialog"
 
 interface ProfileDialogProps {
   user: UserData | null
@@ -39,6 +41,9 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
 
   // File input ref
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 비밀번호 변경 상태
+  const [passwordChanged, setPasswordChanged] = useState(false)
 
   // 다이얼로그 오픈 시 폼 초기화
   const handleOpenChange = (open: boolean) => {
@@ -120,6 +125,12 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
 
     onUpdateProfile(updatedUser)
     setIsEditing(false)
+  }
+
+  // 비밀번호 변경 완료 핸들러
+  const handlePasswordChanged = () => {
+    setPasswordChanged(true)
+    setTimeout(() => setPasswordChanged(false), 3000)
   }
 
   if (!user) return null
@@ -246,6 +257,16 @@ export function ProfileDialog({ user, teams, onUpdateProfile, onLogout }: Profil
               />
             )}
           </div>
+
+          {/* 비밀번호 변경 버튼 추가 */}
+          {!isEditing && !user.passwordReset && (
+            <div className="pt-2">
+              <ChangePasswordDialog 
+                user={user} 
+                onPasswordChanged={handlePasswordChanged} 
+              />
+            </div>
+          )}
 
           <div className="flex justify-between pt-4 pb-2">
             {isEditing ? (

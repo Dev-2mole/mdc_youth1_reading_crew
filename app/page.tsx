@@ -16,6 +16,7 @@ import { ProgressCalendar } from "./components/progress-calendar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ThemeToggle } from "./components/theme-toggle"
+import { ChangePasswordDialog } from "./components/auth/change-password-dialog"
 
 // 공통 타입 import (UserData, Team, ChatMessage, TeamMember)
 import { UserData, Team, ChatMessage, TeamMember } from "./types"
@@ -81,7 +82,7 @@ export default function TeamProgressPage() {
   const [startX, setStartX] = useState<number>(0);
   const [scrollLeft, setScrollLeft] = useState<number>(0);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
-  
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
@@ -373,9 +374,40 @@ export default function TeamProgressPage() {
   }
 
   // 로그아웃 처리
-  const handleLogout = () => {
-    setLoggedInUser(null)
-    setCurrentUser(null)
+  const handleLogout = async () => {
+    try {
+      // 자동 로그인 쿠키 삭제
+      await fetch("/api/auth/auto-login", {
+        method: "DELETE"
+      });
+      
+      // 상태 초기화
+      setLoggedInUser(null)
+      setCurrentUser(null)
+    } catch (error) {
+      console.error("로그아웃 실패:", error)
+    }
+  }
+
+  const handlePasswordChanged = () => {
+    setPasswordChanged(true)
+    // 사용자 정보 리로드 (passwordReset 상태 업데이트)
+    if (loggedInUser) {
+      fetchUserInfo(loggedInUser.id)
+    }
+  }
+
+  // 사용자 정보 다시 불러오기
+  const fetchUserInfo = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`)
+      if (response.ok) {
+        const userData = await response.json()
+        setLoggedInUser(userData)
+      }
+    } catch (error) {
+      console.error("사용자 정보 불러오기 실패:", error)
+    }
   }
 
   // 채팅 토글
@@ -627,28 +659,37 @@ export default function TeamProgressPage() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
-          <ThemeToggle />
-          {loggedInUser?.role === "admin" && (
-            <AdminPanel
-              teams={teamsState}
-              onUpdateTeams={setTeamsState}
-              isAdmin={loggedInUser?.role === "admin"}
-              chatLogs={[...chatLogs, ...chatMessages]}
-            />
-          )}
-          {loggedInUser ? (
-            <ProfileDialog
-              user={loggedInUser}
-              teams={allTeams}
-              onUpdateProfile={handleUpdateProfile}
-              onLogout={handleLogout}
-            />
-          ) : (
-            <LoginDialog onLogin={handleLogin} teams={allTeams} />
-          )}
+            <ThemeToggle />
+            {loggedInUser?.role === "admin" && (
+              <AdminPanel
+                teams={teamsState}
+                onUpdateTeams={setTeamsState}
+                isAdmin={loggedInUser?.role === "admin"}
+                chatLogs={[...chatLogs, ...chatMessages]}
+              />
+            )}
+            {loggedInUser ? (
+              <>
+                {/* 비밀번호 변경 다이얼로그 추가 */}
+                {loggedInUser.passwordReset && (
+                  <ChangePasswordDialog 
+                    user={loggedInUser} 
+                    onPasswordChanged={handlePasswordChanged} 
+                  />
+                )}
+                <ProfileDialog
+                  user={loggedInUser}
+                  teams={allTeams}
+                  onUpdateProfile={handleUpdateProfile}
+                  onLogout={handleLogout}
+                />
+              </>
+            ) : (
+              <LoginDialog onLogin={handleLogin} teams={allTeams} />
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
     <main className="flex flex-1 flex-col md:flex-row container mx-auto my-3 md:my-6 gap-4 md:gap-6 px-2 md:px-4">
         {/* Left side - Team Progress */}
