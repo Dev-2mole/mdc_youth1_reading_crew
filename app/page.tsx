@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -239,6 +239,7 @@ export default function TeamProgressPage() {
   }
   
   
+  
 
   // 체크박스 변경 처리
   const handleCheckboxChange = async (teamId: string, userId: string, dayIndex: number) => {
@@ -332,31 +333,19 @@ export default function TeamProgressPage() {
   }
 
   // 로그인 처리
-  const handleLogin = (user: UserData) => {
-    setLoggedInUser(user)
-    
-    // Dev Team인 경우를 포함하여 처리
-    const team = teamsState.find((t) => t.id === user.teamId)
-    if (team) {
-      // 대시보드에 표시되는 팀인 경우
-      const member = team.members.find((m) => m.id === user.id)
-      if (member) {
-        setCurrentUser(member)
-      } else {
-        // 멤버 정보가 없는 경우 - 기본 정보로 설정
-        setCurrentUser({
-          id: user.id,
-          name: user.name,
-          avatar: user.avatar || "/placeholder.svg?height=32&width=32",
-          progress: 0,
-          goal: 100,
-          dailyChecks: Array(weekdayDates.length).fill(false),
-          role: user.role,
-        })
-      }
-      setActiveTeam(user.teamId)
+  // handleLogin, handleLogout을 useCallback으로 감싸기
+const handleLogin = useCallback((user: UserData) => {
+  setLoggedInUser(user)
+  
+  // Dev Team인 경우를 포함하여 처리
+  const team = teamsState.find((t) => t.id === user.teamId)
+  if (team) {
+    // 대시보드에 표시되는 팀인 경우
+    const member = team.members.find((m) => m.id === user.id)
+    if (member) {
+      setCurrentUser(member)
     } else {
-      // Dev Team 등 대시보드에 표시되지 않는 팀의 사용자
+      // 멤버 정보가 없는 경우 - 기본 정보로 설정
       setCurrentUser({
         id: user.id,
         name: user.name,
@@ -366,31 +355,67 @@ export default function TeamProgressPage() {
         dailyChecks: Array(weekdayDates.length).fill(false),
         role: user.role,
       })
-      // 첫 번째 표시 가능한 팀으로 설정
-      if (teamsState.length > 0) {
-        setActiveTeam(teamsState[0].id)
-      }
+    }
+    setActiveTeam(user.teamId)
+  } else {
+    // Dev Team 등 대시보드에 표시되지 않는 팀의 사용자
+    setCurrentUser({
+      id: user.id,
+      name: user.name,
+      avatar: user.avatar || "/placeholder.svg?height=32&width=32",
+      progress: 0,
+      goal: 100,
+      dailyChecks: Array(weekdayDates.length).fill(false),
+      role: user.role,
+    })
+    // 첫 번째 표시 가능한 팀으로 설정
+    if (teamsState.length > 0) {
+      setActiveTeam(teamsState[0].id)
     }
   }
+}, [teamsState, weekdayDates]);
 
-  // 로그아웃 처리
-  const handleLogout = async () => {
-    try {
-      // 자동 로그인 쿠키 삭제
-      await fetch("/api/auth/auto-login", {
-        method: "DELETE"
-      });
-      
-      // 상태 초기화
-      setLoggedInUser(null)
-      setCurrentUser(null)
-      
-      // 자동 로그인 확인 로직 건너뛰기
-      return
-    } catch (error) {
-      console.error("로그아웃 실패:", error)
-    }
+const handleLogout = useCallback(async () => {
+  try {
+    // 자동 로그인 쿠키 삭제
+    await fetch("/api/auth/auto-login", {
+      method: "DELETE"
+    });
+    
+    // 상태 초기화
+    setLoggedInUser(null)
+    setCurrentUser(null)
+  } catch (error) {
+    console.error("로그아웃 실패:", error)
   }
+}, []);
+
+// 자동 로그인 확인
+useEffect(() => {
+  // 로그인된 사용자가 없는 경우에만 자동 로그인 확인
+  const checkAutoLogin = async () => {
+    // 이미 로그인된 상태라면 아무것도 하지 않음
+    if (loggedInUser) return;
+    try {
+      const response = await fetch("/api/auth/auto-login", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (response.ok) {
+        const user = await response.json();
+        handleLogin(user);
+      } else {
+        // 401, 404 등의 에러 상태일 경우 더 이상 시도하지 않음
+        console.log("자동 로그인 실패:", await response.json());
+      }
+    } catch (error) {
+      console.error("자동 로그인 확인 실패:", error);
+    }
+  };
+  checkAutoLogin();
+}, [loggedInUser, handleLogin]); // loggedInUser가 변경될 때만 실행
 
   const handlePasswordChanged = () => {
     setPasswordChanged(true)

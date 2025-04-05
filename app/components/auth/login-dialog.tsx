@@ -274,11 +274,14 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
                     <SelectValue placeholder="팀 선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams.map((team) => (
-                      <SelectItem key={team.id} value={team.id}>
-                        {team.name}
-                      </SelectItem>
-                    ))}
+                    {teams
+                      .filter(team => team.name !== "Dev Team")  // Dev Team 제외
+                      .map((team) => (
+                        <SelectItem key={team.id} value={team.id}>
+                          {team.name}
+                        </SelectItem>
+                      ))
+                    }
                   </SelectContent>
                 </Select>
               </div>
