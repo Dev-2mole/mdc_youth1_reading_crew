@@ -1,7 +1,7 @@
 // app/components/auth/login-dialog.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   Dialog,
   DialogContent,
@@ -44,28 +44,37 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
   const [registerTeam, setRegisterTeam] = useState("")
   const [registerError, setRegisterError] = useState("")
 
+  // 자동 로그인 확인의 콜백 함수화
+  const checkAutoLogin = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/auto-login", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        onLogin(user);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("자동 로그인 확인 실패:", error);
+      return false;
+    }
+  }, [onLogin]);
+
   // 자동 로그인 확인
   useEffect(() => {
-    const checkAutoLogin = async () => {
-      try {
-        const response = await fetch("/api/auth/auto-login", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.ok) {
-          const user = await response.json();
-          onLogin(user);
-        }
-      } catch (error) {
-        console.error("자동 로그인 확인 실패:", error);
-      }
+    // 페이지 로드 시 한 번만 실행
+    const performAutoLogin = async () => {
+      await checkAutoLogin();
     };
 
-    checkAutoLogin();
-  }, [onLogin]);
+    performAutoLogin();
+  }, [checkAutoLogin]);
 
   // 로그인 함수 (API 요청)
   const handleLogin = async () => {
@@ -131,7 +140,6 @@ export function LoginDialog({ onLogin, teams }: LoginDialogProps) {
       if (!res.ok) {
         throw new Error(data.error || "회원가입 실패")
       }
-
 
       // 회원가입 후 자동 로그인
       const { password, ...userWithoutPassword } = data

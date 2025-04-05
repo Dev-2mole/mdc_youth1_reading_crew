@@ -384,6 +384,9 @@ export default function TeamProgressPage() {
       // 상태 초기화
       setLoggedInUser(null)
       setCurrentUser(null)
+      
+      // 자동 로그인 확인 로직 건너뛰기
+      return
     } catch (error) {
       console.error("로그아웃 실패:", error)
     }
