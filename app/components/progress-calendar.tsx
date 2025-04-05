@@ -29,7 +29,7 @@ export function ProgressCalendar({
     return `${date.getMonth() + 1}/${date.getDate()}`
   }
 
-  // 요일 표시 함수 추가
+  // 요일 표시 함수
   const getWeekdayLabel = (date: Date) => {
     const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
     return weekdays[date.getDay()]
@@ -166,23 +166,28 @@ export function ProgressCalendar({
               <h4 className="text-sm font-medium">{getMonthName(currentMonthKey)}</h4>
             </div>
             <div className="p-1 sm:p-3 grid grid-cols-5 gap-1 sm:gap-2">
-              {/* 요일 헤더 추가 */}
+              {/* 요일 헤더 (고정: 월화수목금) */}
               {["월", "화", "수", "목", "금"].map((day) => (
                 <div key={day} className="flex justify-center">
                   <span className="text-xs font-bold text-gray-500">{day}</span>
                 </div>
               ))}
               
-              {/* 날짜와 체크박스 (요일별로 그룹화) */}
+              {/* 현재 월의 날짜들을 요일별로 그룹화하여 표시 */}
+              {/* 각 날짜를 실제 요일(월~금)에 따라 적절한 위치에 배치 */}
               {currentItems.map(({ date, index, checked }) => {
-                const weekday = getWeekdayLabel(date);
-                // 주말(토,일)은 표시하지 않음
-                if (weekday === "토" || weekday === "일") return null;
+                const weekday = date.getDay(); // 0은 일요일, 1은 월요일, ..., 6은 토요일
+                // 주말은 표시하지 않음
+                if (weekday === 0 || weekday === 6) return null;
+                
+                // 요일에 맞는 열 위치 계산: 1(월요일)은 0번째 열, 2(화요일)은 1번째 열, ... 5(금요일)은 4번째 열
+                const columnIndex = weekday - 1;
                 
                 return (
                   <div 
                     key={index} 
                     className="flex flex-col items-center justify-start pt-1"
+                    style={{ gridColumn: columnIndex + 1 }} // 그리드 위치에 명시적으로 배치
                   >
                     <span className="text-xs mb-1 font-medium text-center">{formatDate(date)}</span>
                     <div className="relative">
