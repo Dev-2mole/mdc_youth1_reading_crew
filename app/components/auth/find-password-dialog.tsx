@@ -152,8 +152,8 @@ export function FindPasswordDialog({ onResetSuccess }: FindPasswordDialogProps) 
         <DialogHeader>
           <DialogTitle>계정 정보 찾기</DialogTitle>
           <DialogDescription>
-            {step === 1 && "아이디와 이름을 입력해주세요."}
-            {step === 2 && "목동제일교회 청년1부 담당 목사님 정보를 입력해주세요."}
+            {step === 1 && "자신의 아이디와 이름을 입력해주세요."}
+            {step === 2 && "청년 1부 인증이 필요합니다. \n 목동제일교회 청년1부 담당 목사님 정보를 입력해주세요."}
             {step === 3 && "비밀번호 초기화 완료"}
           </DialogDescription>
         </DialogHeader>
@@ -201,12 +201,12 @@ export function FindPasswordDialog({ onResetSuccess }: FindPasswordDialogProps) 
                   placeholder="목사님의 이름을 입력하세요"
                   className="flex-1"
                 />
-                <span className="ml-2">목사님</span>
+                <span className="ml">목사님</span>
               </div>
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="pastor-phone">전화번호</Label>
+              <Label htmlFor="pastor-phone">목사님 전화번호</Label>
               <Input 
                 id="pastor-phone" 
                 value={pastorPhone} 

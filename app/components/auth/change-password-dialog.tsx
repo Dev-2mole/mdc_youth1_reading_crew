@@ -98,12 +98,12 @@ export function ChangePasswordDialog({ user, onPasswordChanged }: ChangePassword
       // 성공 상태로 변경
       setSuccess(true)
       
-      // 3초 후 다이얼로그 닫기
+      // 1.3초 후 다이얼로그 닫기
       setTimeout(() => {
         setIsOpen(false)
         resetForm()
         onPasswordChanged()
-      }, 3000)
+      }, 1300)
 
     } catch (error: any) {
       console.error("비밀번호 변경 오류:", error)
