@@ -14,10 +14,13 @@ export async function GET(
 ) {
   // 경로 배열을 문자열로 결합
   const filePath = params.path.join('/');
+
+  // URL 디코딩 추가
+  const decodedPath = params.path.map(segment => decodeURIComponent(segment)).join('/');
   
   // 파일 경로 생성 - uploads 디렉토리 내에서 찾음
   const uploadDir = path.join(process.cwd(), "uploads");
-  const fullPath = path.join(uploadDir, filePath);
+  const fullPath = path.join(uploadDir, decodedPath);
   
   // 경로 검증 - uploads 디렉토리 외부 접근 방지 (디렉토리 트래버설 공격 방지)
   const normalizedFullPath = path.normalize(fullPath);
